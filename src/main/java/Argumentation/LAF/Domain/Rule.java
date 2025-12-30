@@ -11,6 +11,7 @@ public class Rule extends KnowledgePiece{
         this.head = head;
         this.body = body;
         this.attributes = attributes;
+        this.deltaAttributes = attributes;
     }
 
     public String getHead() {

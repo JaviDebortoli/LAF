@@ -6,7 +6,6 @@ public class Fact extends KnowledgePiece{
     
     private final String name;
     private final String argument;
-    private Double[] deltaAttributes;
 
     public Fact(String name, String argument, Double[] attributes) {
         this.name = name;
@@ -21,20 +20,6 @@ public class Fact extends KnowledgePiece{
 
     public String getArgument() {
         return argument;
-    }
-
-    public Double[] getDeltaAttributes() {
-        return deltaAttributes;
-    }
-
-    public void setDeltaAttributes(Double[] deltaAttributes) {
-        this.deltaAttributes = deltaAttributes;
-    }
-
-    @Override
-    public void setAttributes(Double[] attributes) {
-        super.setAttributes(attributes);
-        this.deltaAttributes = (attributes != null) ? attributes.clone() : null;
     }
 
     @Override

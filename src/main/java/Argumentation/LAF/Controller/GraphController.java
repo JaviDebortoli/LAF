@@ -22,10 +22,7 @@ public class GraphController {
     private final InferenceService inferenceService;
     private final GraphBuilderService graphBuilderService;
 
-    public GraphController(ProgramLoaderService programLoaderService,
-                           AlgebraService algebraService,
-                           InferenceService inferenceService,
-                           GraphBuilderService graphBuilderService) {
+    public GraphController(ProgramLoaderService programLoaderService, AlgebraService algebraService, InferenceService inferenceService, GraphBuilderService graphBuilderService) {
         this.programLoaderService = programLoaderService;
         this.algebraService = algebraService;
         this.inferenceService = inferenceService;
@@ -34,11 +31,9 @@ public class GraphController {
 
     @GetMapping("/graph")
     public ResponseEntity<GraphResponse> getGraph() {
-
         var facts = programLoaderService.getCurrentFacts();
         var rules = programLoaderService.getCurrentRules();
         var operations = algebraService.getOperationsByLabel();
-
         var argumentativeGraph = inferenceService.buildGraph(facts, rules, operations);
         var response = graphBuilderService.toGraphResponse(argumentativeGraph);
 

@@ -21,7 +21,6 @@ public class GraphBuilderService {
     
     int factCounter;
     int ruleCounter;
-    int genericCounter;
     
     public GraphResponse toGraphResponse(ArgumentativeGraph graph) {
                 
@@ -31,7 +30,6 @@ public class GraphBuilderService {
 
         factCounter = 1;
         ruleCounter = 1;
-        genericCounter = 1;
         
         Map<KnowledgePiece, String> idMap = new HashMap<>();
 
@@ -67,18 +65,10 @@ public class GraphBuilderService {
             } else if (kp instanceof Rule rule) {
                 String id = idMap.computeIfAbsent(kp, k -> "R" + (ruleCounter++));
                 nodeDto.setId(id);
-                nodeDto.setLabel(rule.toString()); // "head(X) :- body(X)."
+                nodeDto.setLabel(rule.toString());
                 nodeDto.setType("RULE");
                 nodeDto.setAttributes(rule.getAttributes());
-                nodeDto.setDeltaAttributes(null);
-
-            } else {
-                String id = idMap.computeIfAbsent(kp, k -> "K" + (genericCounter++));
-                nodeDto.setId(id);
-                nodeDto.setLabel(kp.toString());
-                nodeDto.setType("UNKNOWN");
-                nodeDto.setAttributes(kp.getAttributes());
-                nodeDto.setDeltaAttributes(null);
+                nodeDto.setDeltaAttributes(rule.getDeltaAttributes());
             }
 
             nodeDtos.add(nodeDto);

@@ -18,15 +18,12 @@ import org.springframework.stereotype.Service;
 @Service
 public class InferenceService {
     
-    public ArgumentativeGraph buildGraph(List<Fact> facts,
-                                         List<Rule> rules,
-                                         Map<String, OperationSet> operations) {
+    public ArgumentativeGraph buildGraph(List<Fact> facts, List<Rule> rules, Map<String, OperationSet> operations) {
         
         if (operations == null || operations.isEmpty()) {
             throw new IllegalStateException("Las funciones del álgebra no han sido configuradas.");
         }
         
-        // Cada etiqueta aporta 3 funciones: soporte, agregación y conflicto
         String[][] functions = new String[operations.size()][3];
         int i = 0;
         for (OperationSet set : operations.values()) {
