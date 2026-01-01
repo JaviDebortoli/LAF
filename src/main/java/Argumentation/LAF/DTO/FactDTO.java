@@ -12,7 +12,7 @@ public class FactDTO {
     
     private String name;     
     private String argument;   
-    private Double[] attributes;
+    private String[] attributes;
 
     public String getName() {
         return name;
@@ -30,11 +30,11 @@ public class FactDTO {
         this.argument = argument;
     }
 
-    public Double[] getAttributes() {
+    public String[] getAttributes() {
         return attributes;
     }
 
-    public void setAttributes(Double[] attributes) {
+    public void setAttributes(String[] attributes) {
         this.attributes = attributes;
     }
 

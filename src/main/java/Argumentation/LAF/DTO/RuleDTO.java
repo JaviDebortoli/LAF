@@ -12,7 +12,7 @@ public class RuleDTO {
     
     private String headName;
     private List<String> bodyLiterals;
-    private Double[] attributes;
+    private String[] attributes;
 
     public String getHeadName() {
         return headName;
@@ -30,11 +30,11 @@ public class RuleDTO {
         this.bodyLiterals = bodyLiterals;
     }
 
-    public Double[] getAttributes() {
+    public String[] getAttributes() {
         return attributes;
     }
 
-    public void setAttributes(Double[] attributes) {
+    public void setAttributes(String[] attributes) {
         this.attributes = attributes;
     }
     

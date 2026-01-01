@@ -7,11 +7,11 @@ public class Fact extends KnowledgePiece{
     private final String name;
     private final String argument;
 
-    public Fact(String name, String argument, Double[] attributes) {
+    public Fact(String name, String argument, String[] attributes) {
         this.name = name;
         this.argument = argument;
         this.attributes = attributes;
-        this.deltaAttributes = (attributes != null) ? attributes.clone() : null;
+        this.deltaAttributes = attributes;
     }
 
     public String getName() {

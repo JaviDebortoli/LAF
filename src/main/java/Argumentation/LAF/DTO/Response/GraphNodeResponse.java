@@ -11,8 +11,8 @@ public class GraphNodeResponse {
     private String id;
     private String label;
     private String type;
-    private Double[] attributes;
-    private Double[] deltaAttributes;
+    private String[] attributes;
+    private String[] deltaAttributes;
 
     public String getId() {
         return id;
@@ -38,19 +38,19 @@ public class GraphNodeResponse {
         this.type = type;
     }
 
-    public Double[] getAttributes() {
+    public String[] getAttributes() {
         return attributes;
     }
 
-    public void setAttributes(Double[] attributes) {
+    public void setAttributes(String[] attributes) {
         this.attributes = attributes;
     }
 
-    public Double[] getDeltaAttributes() {
+    public String[] getDeltaAttributes() {
         return deltaAttributes;
     }
 
-    public void setDeltaAttributes(Double[] deltaAttributes) {
+    public void setDeltaAttributes(String[] deltaAttributes) {
         this.deltaAttributes = deltaAttributes;
     }
     

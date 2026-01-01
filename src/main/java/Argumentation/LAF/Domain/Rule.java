@@ -7,7 +7,7 @@ public class Rule extends KnowledgePiece{
     private final String head;
     private final List<String> body;
 
-    public Rule(String head, List<String> body, Double[] attributes) {
+    public Rule(String head, List<String> body, String[] attributes) {
         this.head = head;
         this.body = body;
         this.attributes = attributes;

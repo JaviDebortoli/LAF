@@ -2,23 +2,23 @@ package Argumentation.LAF.Domain;
 
 public abstract class KnowledgePiece {
     
-    protected Double[] attributes;
-    protected Double[] deltaAttributes;
+    protected String[] attributes;
+    protected String[] deltaAttributes;
 
-    public Double[] getAttributes() {
+    public String[] getAttributes() {
         return attributes;
     }
 
-    public void setAttributes(Double[] attributes) {
+    public void setAttributes(String[] attributes) {
         this.attributes = attributes;
         this.deltaAttributes = attributes;
     }
     
-    public Double[] getDeltaAttributes() {
+    public String[] getDeltaAttributes() {
         return deltaAttributes;
     }
 
-    public void setDeltaAttributes(Double[] deltaAttributes) {
+    public void setDeltaAttributes(String[] deltaAttributes) {
         this.deltaAttributes = deltaAttributes;
     }
 

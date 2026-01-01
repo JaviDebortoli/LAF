@@ -130,37 +130,43 @@ public class InferenceEngine {
      * Calcula el valor de los atributos de un hecho inferido
      * con la operacion definida para el soporte
      */
-    private Double[] support (List<Fact> potentialFacts, Rule rule) {
-        Double[] atributtes = new Double[ potentialFacts.getFirst().getAttributes().length ];
+    private String[] support (List<Fact> potentialFacts, Rule rule) {
+        String[] atributtes = new String[ potentialFacts.getFirst().getAttributes().length ];
         Expression expression;
         
         for (int i = 0; i < atributtes.length ; i++) {
-            atributtes[i] = 0.0;
+            atributtes[i] = "0.0";
             // Reemplazar los valores de X y Y, y evaluar la funcion para cada uno de los antecedentes
-            for (Fact fact : potentialFacts) {
-                
+            try {
+                for (Fact fact : potentialFacts) {
+                    expression = new ExpressionBuilder( functions[i][0] )
+                        .variables("X", "Y")
+                        .build()
+                        .setVariable("X", Double.parseDouble(atributtes[i]))
+                        .setVariable("Y", Double.parseDouble(fact.getAttributes()[i]));
+
+                    atributtes[i] = String.valueOf(expression.evaluate());
+                }
+                // Reemplazar los valores de X y Y, y evaluar la funcion para la regla
                 expression = new ExpressionBuilder( functions[i][0] )
                         .variables("X", "Y")
                         .build()
-                        .setVariable("X", atributtes[i])
-                        .setVariable("Y", fact.getAttributes()[i]);
-                
-                atributtes[i] = expression.evaluate();
-                
-            }
-            // Reemplazar los valores de X y Y, y evaluar la funcion para la regla
-            expression = new ExpressionBuilder( functions[i][0] )
-                    .variables("X", "Y")
-                    .build()
-                    .setVariable("X", atributtes[i])
-                    .setVariable("Y", rule.getAttributes()[i]);
-            
-            atributtes[i] = expression.evaluate();
-            // Ubicar los valores en el intervalo [0, 1]
-            if (atributtes[i]>1) {
-                atributtes[i] = 1.0;
-            } else if (atributtes[i]<0) {
-                atributtes[i] = 0.0;
+                        .setVariable("X", Double.parseDouble(atributtes[i]))
+                        .setVariable("Y", Double.parseDouble(rule.getAttributes()[i]));
+
+                atributtes[i] = String.valueOf(expression.evaluate());
+                // Ubicar los valores en el intervalo [0, 1]
+                if (Double.parseDouble(atributtes[i])>1) {
+                    atributtes[i] = "1.0";
+                } else if (Double.parseDouble(atributtes[i])<0) {
+                    atributtes[i] = "0.0";
+                }
+            } catch (NumberFormatException e) {
+                    
+                    //
+                    // FUNCIONALIDAD PARA ETIQUETAS TEXTUALES
+                    //
+                    
             }
         }
         
@@ -336,68 +342,79 @@ public class InferenceEngine {
     }
     
     // Calcular los valores de los atributos cuando hay agregacion
-    private Double[] calculateAggregation(Fact newFact, Fact removableFact) {
-        Double[] atributtes = new Double[ newFact.getAttributes().length ];
+    private String[] calculateAggregation(Fact newFact, Fact removableFact) {
+        String[] atributtes = new String[ newFact.getAttributes().length ];
         Expression expression;
         
         for (int i = 0; i < atributtes.length ; i++) {
-            
-            atributtes[i] = 0.0;
-            
-            // Reemplazar las variables X y Y de la expresion
-            expression = new ExpressionBuilder( functions[i][1] )
-                    .variables("X", "Y")
-                    .build()
-                    .setVariable("X", newFact.getAttributes()[i])
-                    .setVariable("Y", removableFact.getAttributes()[i]);
-            
-            // Evaluar la expresion con los parametros actuales
-            atributtes[i] = expression.evaluate();
-            
-            // Ubicar los valores en el intervalo [0, 1]
-            if (atributtes[i]>1) {
-                atributtes[i] = 1.0;
-            } else if (atributtes[i]<0) {
-                atributtes[i] = 0.0;
+            try {
+                atributtes[i] = "0.0";
+
+                // Reemplazar las variables X y Y de la expresion
+                expression = new ExpressionBuilder( functions[i][1] )
+                        .variables("X", "Y")
+                        .build()
+                        .setVariable("X", Double.parseDouble(newFact.getAttributes()[i]))
+                        .setVariable("Y", Double.parseDouble(removableFact.getAttributes()[i]));
+
+                // Evaluar la expresion con los parametros actuales
+                atributtes[i] = String.valueOf(expression.evaluate());
+                // Ubicar los valores en el intervalo [0, 1]
+                if (Double.parseDouble(atributtes[i])>1) {
+                    atributtes[i] = "1.0";
+                } else if (Double.parseDouble(atributtes[i])<0) {
+                    atributtes[i] = "0.0";
+                }
+            } catch (NumberFormatException e) {
+                    
+                    //
+                    // FUNCIONALIDAD PARA ETIQUETAS TEXTUALES
+                    //
+                    
             }
-            
         }
         
         return atributtes;
     }
 
     // Calcular los valores de los atributos cuando hay agregacion en hechos que no estan en la lista
-    private Double[] calculateAggregation(List<Fact> aggregatedFacts) {
-        Double[] atributtes = new Double[ aggregatedFacts.getFirst().getAttributes().length ];
+    private String[] calculateAggregation(List<Fact> aggregatedFacts) {
+        String[] atributtes = new String[ aggregatedFacts.getFirst().getAttributes().length ];
         Expression expression;
         
         for (int i = 0; i < atributtes.length ; i++) {
+            try {
+                atributtes[i] = null;
             
-            atributtes[i] = null;
-            
-            for (Fact fact : aggregatedFacts) {
-                
-                if(atributtes[i] == null){
-                    atributtes[i] = fact.getAttributes()[i];
-                } else {
-                    // Reemplazar las variables X y Y de la expresion
-                    expression = new ExpressionBuilder(functions[i][1])
-                            .variables("X", "Y")
-                            .build()
-                            .setVariable("X", atributtes[i])
-                            .setVariable("Y", fact.getAttributes()[i]);
-                    
-                    // Evaluar la expresion con los parametros actuales
-                    atributtes[i] = expression.evaluate();
+                for (Fact fact : aggregatedFacts) {
+                    if(atributtes[i] == null){
+                        atributtes[i] = fact.getAttributes()[i];
+                    } else {
+                        // Reemplazar las variables X y Y de la expresion
+                        expression = new ExpressionBuilder(functions[i][1])
+                                .variables("X", "Y")
+                                .build()
+                                .setVariable("X", Double.parseDouble(atributtes[i]))
+                                .setVariable("Y", Double.parseDouble(fact.getAttributes()[i]));
+
+                        // Evaluar la expresion con los parametros actuales
+                        atributtes[i] = String.valueOf(expression.evaluate());
+                    }
                 }
+                // Ubicar los valores en el intervalo [0, 1]
+                if (Double.parseDouble(atributtes[i])>1) {
+                    atributtes[i] = "1.0";
+                } else if (Double.parseDouble(atributtes[i])<0) {
+                    atributtes[i] = "0.0";
+                }
+            } catch (NumberFormatException e) {
+            
+                //
+                // FUNCIONALIDAD PARA ETIQUETAS TEXTUALES
+                //
+                
             }
             
-            // Ubicar los valores en el intervalo [0, 1]
-            if (atributtes[i]>1) {
-                atributtes[i] = 1.0;
-            } else if (atributtes[i]<0) {
-                atributtes[i] = 0.0;
-            }
             
         }
         
@@ -407,8 +424,8 @@ public class InferenceEngine {
     // Trata conflictos entre hechos que se contradicen
     private void conflict() {
         List<Fact> negativeFacts = new ArrayList<>();
-        Double[] Attributte1;
-        Double[] Attributte2;
+        String[] Attributte1;
+        String[] Attributte2;
         
         // Capturar todos los hechos con una negación
         for (Fact fact : facts) {
@@ -437,29 +454,34 @@ public class InferenceEngine {
     }
     
     // Calcular valores de los atributos para los hechos en conflicto
-    private Double[] calculateAttack (Fact f1, Fact f2) {
-        Double[] attributtes = new Double[f1.getAttributes().length]; // Array vacio
+    private String[] calculateAttack (Fact f1, Fact f2) {
+        String[] attributtes = new String[f1.getAttributes().length]; // Array vacio
         Expression expression;
         
         for (int i = 0; i < attributtes.length; i++) { 
+            try {
+                // Reemplazar las variables X y Y de la expresion
+                expression = new ExpressionBuilder( functions[i][2] )
+                        .variables("X", "Y")
+                        .build()
+                        .setVariable("X", Double.parseDouble(f1.getAttributes()[i]))
+                        .setVariable("Y", Double.parseDouble(f2.getAttributes()[i]));
+
+                // Evaluar la expresion con los parametros actuales
+                attributtes[i] = String.valueOf(expression.evaluate());
+                // Ubicar los valores en el intervalo [0, 1]
+                if (Double.parseDouble(attributtes[i])>1) {
+                    attributtes[i] = "1.0";
+                } else if (Double.parseDouble(attributtes[i])<0) {
+                    attributtes[i] = "0.0";
+                }
+            } catch (NumberFormatException e) {
             
-            // Reemplazar las variables X y Y de la expresion
-            expression = new ExpressionBuilder( functions[i][2] )
-                    .variables("X", "Y")
-                    .build()
-                    .setVariable("X", f1.getAttributes()[i])
-                    .setVariable("Y", f2.getAttributes()[i]);
+                //
+                // FUNCIONALIDAD PARA ETIQUETAS TEXTUALES
+                //
             
-            // Evaluar la expresion con los parametros actuales
-            attributtes[i] = expression.evaluate();
-            
-            // Ubicar los valores en el intervalo [0, 1]
-            if (attributtes[i]>1) {
-                attributtes[i] = 1.0;
-            } else if (attributtes[i]<0) {
-                attributtes[i] = 0.0;
             }
-            
         }
         
         return attributtes;
