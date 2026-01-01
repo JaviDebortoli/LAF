@@ -74,24 +74,59 @@ public class GraphBuilderService {
             nodeDtos.add(nodeDto);
         }
 
+        
+        // Mapa hijo -> lista de padres (KnowledgePiece)
+        Map<Fact, List<KnowledgePiece>> parentsMap = new HashMap<>();
+
+        for (Map.Entry<KnowledgePiece, List<Fact>> entry : graph.edges().entrySet()) {
+            KnowledgePiece parent = entry.getKey();
+            for (Fact child : entry.getValue()) {
+                parentsMap
+                    .computeIfAbsent(child, k -> new ArrayList<>())
+                    .add(parent);
+            }
+        }
+        
         // Crear aristas de soporte/derivación a partir de edges()
         for (Map.Entry<KnowledgePiece, List<Fact>> entry : graph.edges().entrySet()) {
             KnowledgePiece fromKp = entry.getKey();
             String fromId = idMap.get(fromKp);
-            if (fromId == null) continue;
+            if (fromId == null) {
+                continue;
+            }
 
             for (Fact toFact : entry.getValue()) {
                 String toId = idMap.get(toFact);
-                if (toId == null) continue;
+                if (toId == null) {
+                    continue;
+                }
 
                 GraphEdgeResponse edgeDto = new GraphEdgeResponse();
                 edgeDto.setFrom(fromId);
                 edgeDto.setTo(toId);
-                edgeDto.setKind("SUPPORT"); // Por ahora no distinguimos AGGREGATION vs SUPPORT
+
+                // ==== NUEVO: decidir tipo de arista según TODOS los padres del hijo ====
+                List<KnowledgePiece> parents = parentsMap.getOrDefault(toFact, List.of());
+                boolean hasRuleParent = parents.stream().anyMatch(p -> p instanceof Rule);
+                boolean allParentsFacts = !parents.isEmpty()
+                        && parents.stream().allMatch(p -> p instanceof Fact);
+
+                if (hasRuleParent) {
+                    // Si hay al menos una regla padre, TODAS las aristas padre->hijo son SUPPORT
+                    edgeDto.setKind("SUPPORT");
+                } else if (allParentsFacts) {
+                    // Sólo cuando todos los padres son hechos es una AGGREGATION
+                    edgeDto.setKind("AGGREGATION");
+                } else {
+                    // Caso raro / defensivo: por defecto SUPPORT
+                    edgeDto.setKind("SUPPORT");
+                }
+                // =====================================================
+
                 edgeDtos.add(edgeDto);
             }
         }
-
+        
         // Crear aristas de conflicto a partir de conflictiveNodes()
         for (Pair pair : graph.conflictiveNodes()) {
             Fact f1 = pair.first();
