@@ -1,8 +1,10 @@
 package Argumentation.LAF.Domain;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -133,6 +135,7 @@ public class InferenceEngine {
     private String[] support (List<Fact> potentialFacts, Rule rule) {
         String[] atributtes = new String[ potentialFacts.getFirst().getAttributes().length ];
         Expression expression;
+        LinkedHashSet<String> union = new LinkedHashSet<>();
         
         for (int i = 0; i < atributtes.length ; i++) {
             atributtes[i] = "0.0";
@@ -161,18 +164,43 @@ public class InferenceEngine {
                 } else if (Double.parseDouble(atributtes[i])<0) {
                     atributtes[i] = "0.0";
                 }
-            } catch (NumberFormatException e) {
+            } catch (IllegalArgumentException exception1) {
+                
+                /*
+                *
+                * ONLY UNION SUPPORTED!!!!!!!!!!
+                *
+                */
+                
+                try {
+                    union.clear();
                     
-                    //
-                    // FUNCIONALIDAD PARA ETIQUETAS TEXTUALES
-                    //
+                    switch (functions[i][0]) {
+                        case "Union" -> {
+                            for (Fact fact : potentialFacts) {
+                                union.add(fact.getAttributes()[i]);
+                            }
+                            union.add(rule.getAttributes()[i]);
+                            atributtes[i] = String.join(" ", union);
+                            break;
+                        }
+                        
+                        /*
+                        *
+                        * TO DO: OTHER OPERATORS
+                        *
+                        */
                     
+                    }
+                } catch (Exception exception2) {
+                    throw exception2;
+                }
             }
         }
         
         return atributtes;
     }
-     
+    
     /**
      * Determina si dos hechos son iguales
      */
@@ -345,11 +373,11 @@ public class InferenceEngine {
     private String[] calculateAggregation(Fact newFact, Fact removableFact) {
         String[] atributtes = new String[ newFact.getAttributes().length ];
         Expression expression;
+        LinkedHashSet<String> union = new LinkedHashSet<>();
         
         for (int i = 0; i < atributtes.length ; i++) {
             try {
                 atributtes[i] = "0.0";
-
                 // Reemplazar las variables X y Y de la expresion
                 expression = new ExpressionBuilder( functions[i][1] )
                         .variables("X", "Y")
@@ -365,12 +393,35 @@ public class InferenceEngine {
                 } else if (Double.parseDouble(atributtes[i])<0) {
                     atributtes[i] = "0.0";
                 }
-            } catch (NumberFormatException e) {
+            } catch (IllegalArgumentException exception1) {
                     
-                    //
-                    // FUNCIONALIDAD PARA ETIQUETAS TEXTUALES
-                    //
+                /*
+                *
+                * ONLY UNION SUPPORTED!!!!!!!!!!
+                *
+                */
+                
+                try {
+                    union.clear();
                     
+                    switch (functions[i][1]) {
+                        case "Union" -> {
+                            union.addAll(Arrays.asList(newFact.getAttributes()[i].split(" ")));
+                            union.addAll(Arrays.asList(removableFact.getAttributes()[i].split(" ")));
+                            
+                            atributtes[i] = String.join(" ", union);
+                        }
+                        
+                        /*
+                        *
+                        * TO DO: OTHER OPERATORS
+                        *
+                        */
+                    
+                    }
+                } catch (Exception exception2) {
+                    throw exception2;
+                }
             }
         }
         
@@ -381,6 +432,7 @@ public class InferenceEngine {
     private String[] calculateAggregation(List<Fact> aggregatedFacts) {
         String[] atributtes = new String[ aggregatedFacts.getFirst().getAttributes().length ];
         Expression expression;
+        LinkedHashSet<String> union = new LinkedHashSet<>();
         
         for (int i = 0; i < atributtes.length ; i++) {
             try {
@@ -407,15 +459,37 @@ public class InferenceEngine {
                 } else if (Double.parseDouble(atributtes[i])<0) {
                     atributtes[i] = "0.0";
                 }
-            } catch (NumberFormatException e) {
-            
-                //
-                // FUNCIONALIDAD PARA ETIQUETAS TEXTUALES
-                //
+            } catch (IllegalArgumentException exception1) {
                 
+                /*
+                *
+                * ONLY UNION SUPPORTED!!!!!!!!!!
+                *
+                */
+                
+                try {
+                    union.clear();
+                    
+                    switch (functions[i][1]) {
+                        case "Union" -> {
+                            for (Fact fact : aggregatedFacts) {
+                                union.addAll(Arrays.asList(fact.getAttributes()[i].split(" ")));
+                            }
+                            
+                            atributtes[i] = String.join(" ", union);
+                        }
+                        
+                        /*
+                        *
+                        * TO DO: OTHER OPERATORS
+                        *
+                        */
+                    
+                    }
+                } catch (Exception exception2) {
+                    throw exception2;
+                }
             }
-            
-            
         }
         
         return atributtes;
@@ -457,6 +531,8 @@ public class InferenceEngine {
     private String[] calculateAttack (Fact f1, Fact f2) {
         String[] attributtes = new String[f1.getAttributes().length]; // Array vacio
         Expression expression;
+        LinkedHashSet<String> intersection1 = new LinkedHashSet<>();
+        LinkedHashSet<String> intersection2 = new LinkedHashSet<>();
         
         for (int i = 0; i < attributtes.length; i++) { 
             try {
@@ -475,11 +551,38 @@ public class InferenceEngine {
                 } else if (Double.parseDouble(attributtes[i])<0) {
                     attributtes[i] = "0.0";
                 }
-            } catch (NumberFormatException e) {
+            } catch (IllegalArgumentException exception1) {
             
-                //
-                // FUNCIONALIDAD PARA ETIQUETAS TEXTUALES
-                //
+                /*
+                *
+                * ONLY INTERSECTION SUPPORTED!!!!!!!!!!
+                *
+                */
+                
+                try {
+                    intersection1.clear();
+                    intersection2.clear();
+                    
+                    switch (functions[i][2]) {
+                        case "Intersection" -> {
+                            intersection1.addAll(Arrays.asList(f1.getAttributes()[i].split(" ")));
+                            intersection2.addAll(Arrays.asList(f2.getAttributes()[i].split(" ")));
+                            
+                            intersection1.retainAll(intersection2);
+                            
+                            attributtes[i] = String.join(" ", intersection1);
+                        }
+                        
+                        /*
+                        *
+                        * TO DO: OTHER OPERATORS
+                        *
+                        */
+                    
+                    }
+                } catch (Exception exception2) {
+                    throw exception2;
+                }
             
             }
         }

@@ -21,7 +21,7 @@ public class InferenceService {
     public ArgumentativeGraph buildGraph(List<Fact> facts, List<Rule> rules, Map<String, OperationSet> operations) {
         
         if (operations == null || operations.isEmpty()) {
-            throw new IllegalStateException("Las funciones del álgebra no han sido configuradas.");
+            throw new IllegalStateException("Missing functions");
         }
         
         String[][] functions = new String[operations.size()][3];
