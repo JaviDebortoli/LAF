@@ -6,7 +6,7 @@ import Argumentation.LAF.DTO.Response.GraphResponse;
 import Argumentation.LAF.Domain.ArgumentativeGraph;
 import Argumentation.LAF.Domain.Fact;
 import Argumentation.LAF.Domain.KnowledgePiece;
-import Argumentation.LAF.Domain.Pair;
+import Argumentation.LAF.Domain.PairInConflict;
 import Argumentation.LAF.Domain.Rule;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -16,12 +16,85 @@ import java.util.Map;
 import java.util.Set;
 import org.springframework.stereotype.Service;
 
+/**
+ * Service responsible for constructing the argumentation graph used in the
+ * Label-Based Argumentation Framework (LAF). This component takes as input the
+ * pieces of knowledge provided by the user (facts, rules and conflict relations)
+ * and generates a structured graph with typed nodes and edges that reflects the
+ * inferential structure of the argumentative process.
+ *
+ * <p>
+ * The generated graph includes:
+ * </p>
+ * <ul>
+ *     <li><strong>I-nodes (Information Nodes)</strong>: Representing base facts and premises.</li>
+ *     <li><strong>RA-nodes (Rule Application Nodes)</strong>: Representing the application of
+ *     a rule when its premises are satisfied, linking antecedents with their conclusion.</li>
+ *     <li><strong>CA-nodes (Conflict Application Nodes)</strong>: Representing the presence
+ *     of inconsistencies, disagreements or contradictory conclusions between arguments.</li>
+ * </ul>
+ *
+ * <p>
+ * The resulting graph structure is returned as a {@link GraphResponse}, which
+ * contains abstracted DTO representations of nodes and edges for REST exposure.
+ * Each node receives a unique identifier and each edge is labeled according to
+ * its semantic role in the argumentative structure (AGGREGATION, SUPPORT, CONFLICT).
+ * </p>
+ *
+ * <h3>Main responsibilities</h3>
+ * <ul>
+ *     <li>Instantiate graph nodes for facts, rules and conflicts.</li>
+ *     <li>Create directional links based on inferential relations.</li>
+ *     <li>Detect and register bidirectional conflict relations between conclusions.</li>
+ *     <li>Export a REST-ready version of the argumentation graph.</li>
+ * </ul>
+ *
+ * <h3>Input and Output</h3>
+ * <p><b>Input:</b> {@link ArgumentativeGraph} instance already populated with
+ * facts, rules and detected conflicts.</p>
+ * <p><b>Output:</b> {@link GraphResponse} containing node and edge DTOs
+ * suitable for visualization or further inference steps.</p>
+ *
+ * @see GraphResponse
+ * @see GraphNodeResponse
+ * @see GraphEdgeResponse
+ * @see ArgumentativeGraph
+ *
+ * @author JaviDebórtoli
+ */
 @Service
 public class GraphBuilderService {
     
-    int factCounter;
-    int ruleCounter;
+    int factCounter; /** Internal counter used to generate unique identifiers for I-nodes. */
+    int ruleCounter; /** Internal counter used to generate unique identifiers for RA-nodes */
     
+    /**
+     * Translates the internal model representation of the argumentation graph
+     * into a serializable structure ({@link GraphResponse}) suitable for REST
+     * communication. This transformation converts each instantiated node and edge
+     * from the logical graph into its corresponding DTO representation.
+     *
+     * <p>
+     * The resulting {@code GraphResponse} aggregates:
+     * </p>
+     * <ul>
+     *     <li>A collection of {@link GraphNodeResponse} elements representing I-nodes,
+     *     RA-nodes and CA-nodes.</li>
+     *     <li>A collection of {@link GraphEdgeResponse} elements capturing support,
+     *     aggregation and conflict relations between nodes.</li>
+     * </ul>
+     *
+     * <p>
+     * This method ensures that the exported graph maintains the semantic integrity
+     * of the LAF structure, preserving the inferential and conflict relationships
+     * described in the underlying argumentation model.
+     * </p> 
+     * 
+     * @param graph the already constructed graph instance containing
+     *              facts, rule applications and conflicts.
+     * @return      a {@link GraphResponse} DTO representing the argumentation graph in a
+     *              format consumable by clients or visualization components.
+     */
     public GraphResponse toGraphResponse(ArgumentativeGraph graph) {
                 
         GraphResponse response = new GraphResponse();
@@ -45,7 +118,7 @@ public class GraphBuilderService {
         }
         
         // Nodos en conflicto
-        for (Pair pair : graph.conflictiveNodes()) {
+        for (PairInConflict pair : graph.conflictiveNodes()) {
             allNodes.add(pair.first());
             allNodes.add(pair.second());
         }
@@ -128,7 +201,7 @@ public class GraphBuilderService {
         }
         
         // Crear aristas de conflicto a partir de conflictiveNodes()
-        for (Pair pair : graph.conflictiveNodes()) {
+        for (PairInConflict pair : graph.conflictiveNodes()) {
             Fact f1 = pair.first();
             Fact f2 = pair.second();
             String id1 = idMap.get(f1);
