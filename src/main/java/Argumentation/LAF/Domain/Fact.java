@@ -13,9 +13,10 @@ import java.util.Arrays;
  * @author JaviDebórtoli
  */
 public class Fact extends KnowledgePiece{
-    
-    private final String name;      /** Predicate name. */
-    private final String argument;  /** Argument of the fact. */
+    /** Predicate name. */
+    private final String name;
+    /** Argument of the fact. */
+    private final String argument;
 
     /**
      * Creates a new fact with the given name, argument and attribute vector.

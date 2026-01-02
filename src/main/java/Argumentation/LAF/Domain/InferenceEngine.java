@@ -49,12 +49,18 @@ import net.objecthunter.exp4j.ExpressionBuilder;
  * @JaviDebórtoli
  */
 public class InferenceEngine {
-    private final Map<KnowledgePiece, List<Fact>> edges;    /** Stores argumentation edges used when constructing the graph. */
-    private final List<Fact> facts;                         /** Active list of facts during the inference cycle. */
-    private final List<Rule> rules;                         /** Rule set composing the program being evaluated. */
-    private final String[][] functions;                     /** Matrix storing the label algebra functions. */
-    private final List<KnowledgePiece> removableEdges;      /** Temporary list of edges that need to be removed after conflict resolution. */
-    private final List<PairInConflict> conflictiveNodes;    /** Pairs of contradictory facts detected during the conflict phase. */
+    /** Stores argumentation edges used when constructing the graph. */
+    private final Map<KnowledgePiece, List<Fact>> edges;
+    /** Active list of facts during the inference cycle. */
+    private final List<Fact> facts;
+    /** Rule set composing the program being evaluated. */
+    private final List<Rule> rules;
+    /** Matrix storing the label algebra functions. */
+    private final String[][] functions;
+    /** Temporary list of edges that need to be removed after conflict resolution. */
+    private final List<KnowledgePiece> removableEdges;
+    /** Pairs of contradictory facts detected during the conflict phase. */
+    private final List<PairInConflict> conflictiveNodes;
     
     /**
      * Creates a new inference engine from lists of facts, rules,

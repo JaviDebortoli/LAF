@@ -26,9 +26,10 @@ import java.util.List;
  * @author JaviDebórtoli
  */
 public class Rule extends KnowledgePiece{
-    
-    private final String head;          /** Name of the head predicate of the rule. */
-    private final List<String> body;    /** List of predicate names appearing in the rule body. */
+    /** Name of the head predicate of the rule. */
+    private final String head;
+    /** List of predicate names appearing in the rule body. */
+    private final List<String> body;
 
     /**
      * Creates a rule with a head, body and label vector.

@@ -14,9 +14,10 @@ package Argumentation.LAF.Domain;
  * @author JaviDebórtoli
  */
 public abstract class KnowledgePiece {
-    
-    protected String[] attributes;      /** Original label values. */
-    protected String[] deltaAttributes; /** Current label values after applying the label algebra. */
+    /** Original label values. */
+    protected String[] attributes;
+    /** Current label values after applying the label algebra. */
+    protected String[] deltaAttributes;
 
     /**
      * Returns the original attributes associated to this piece of knowledge.

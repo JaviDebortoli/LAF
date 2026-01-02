@@ -27,10 +27,12 @@ package Argumentation.LAF.Domain;
  * @author JaviDebórtoli
  */
 public class OperationSet {
-    
-    private final String supportExpr;       /** Expression used for the support operation of this label. */
-    private final String aggregationExpr;   /** Expression used for the aggregation operation of this label. */
-    private final String conflictExpr;      /** Expression used for the conflict operation of this label. */
+    /** Expression used for the support operation of this label. */
+    private final String supportExpr;
+    /** Expression used for the aggregation operation of this label. */
+    private final String aggregationExpr;
+    /** Expression used for the conflict operation of this label. */
+    private final String conflictExpr;
 
     /**
      * Creates a new set of operations for a label.

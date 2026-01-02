@@ -64,9 +64,10 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class GraphBuilderService {
-    
-    int factCounter; /** Internal counter used to generate unique identifiers for I-nodes. */
-    int ruleCounter; /** Internal counter used to generate unique identifiers for RA-nodes */
+    /** Internal counter used to generate unique identifiers for I-nodes. */
+    int factCounter;
+    /** Internal counter used to generate unique identifiers for RA-nodes */
+    int ruleCounter;
     
     /**
      * Translates the internal model representation of the argumentation graph
@@ -96,7 +97,6 @@ public class GraphBuilderService {
      *              format consumable by clients or visualization components.
      */
     public GraphResponse toGraphResponse(ArgumentativeGraph graph) {
-                
         GraphResponse response = new GraphResponse();
         List<GraphNodeResponse> nodeDtos = new ArrayList<>();
         List<GraphEdgeResponse> edgeDtos = new ArrayList<>();
@@ -105,25 +105,20 @@ public class GraphBuilderService {
         ruleCounter = 1;
         
         Map<KnowledgePiece, String> idMap = new HashMap<>();
-
-        // Recolectar todos los nodos que participan en el grafo
+        // Collect all nodes of the graph
         Set<KnowledgePiece> allNodes = new LinkedHashSet<>();
-
-        // Claves del mapa (pueden ser Rules o Facts)
+        // Map keys (can be Rules or Facts)
         allNodes.addAll(graph.edges().keySet());
-        
-        // Valores del mapa (siempre Facts)
+        // Map values (always Facts)
         for (List<Fact> children : graph.edges().values()) {
             allNodes.addAll(children);
         }
-        
-        // Nodos en conflicto
+        // Nodes in conflict
         for (PairInConflict pair : graph.conflictiveNodes()) {
             allNodes.add(pair.first());
             allNodes.add(pair.second());
         }
-
-        // Crear DTOs de nodos
+        // Create DTOs nodes
         for (KnowledgePiece kp : allNodes) {
             GraphNodeResponse nodeDto = new GraphNodeResponse();
 
@@ -146,9 +141,7 @@ public class GraphBuilderService {
 
             nodeDtos.add(nodeDto);
         }
-
-        
-        // Mapa hijo -> lista de padres (KnowledgePiece)
+        // child -> parent list (KnowledgePiece)
         Map<Fact, List<KnowledgePiece>> parentsMap = new HashMap<>();
 
         for (Map.Entry<KnowledgePiece, List<Fact>> entry : graph.edges().entrySet()) {
@@ -159,8 +152,7 @@ public class GraphBuilderService {
                     .add(parent);
             }
         }
-        
-        // Crear aristas de soporte/derivación a partir de edges()
+        // Create support edges
         for (Map.Entry<KnowledgePiece, List<Fact>> entry : graph.edges().entrySet()) {
             KnowledgePiece fromKp = entry.getKey();
             String fromId = idMap.get(fromKp);
@@ -177,30 +169,23 @@ public class GraphBuilderService {
                 GraphEdgeResponse edgeDto = new GraphEdgeResponse();
                 edgeDto.setFrom(fromId);
                 edgeDto.setTo(toId);
-
-                // ==== NUEVO: decidir tipo de arista según TODOS los padres del hijo ====
+                // Select edge type
                 List<KnowledgePiece> parents = parentsMap.getOrDefault(toFact, List.of());
                 boolean hasRuleParent = parents.stream().anyMatch(p -> p instanceof Rule);
                 boolean allParentsFacts = !parents.isEmpty()
                         && parents.stream().allMatch(p -> p instanceof Fact);
 
                 if (hasRuleParent) {
-                    // Si hay al menos una regla padre, TODAS las aristas padre->hijo son SUPPORT
                     edgeDto.setKind("SUPPORT");
                 } else if (allParentsFacts) {
-                    // Sólo cuando todos los padres son hechos es una AGGREGATION
                     edgeDto.setKind("AGGREGATION");
-                } else {
-                    // Caso raro / defensivo: por defecto SUPPORT
-                    edgeDto.setKind("SUPPORT");
                 }
-                // =====================================================
-
+                
                 edgeDtos.add(edgeDto);
             }
         }
         
-        // Crear aristas de conflicto a partir de conflictiveNodes()
+        // Create conflict edges
         for (PairInConflict pair : graph.conflictiveNodes()) {
             Fact f1 = pair.first();
             Fact f2 = pair.second();
