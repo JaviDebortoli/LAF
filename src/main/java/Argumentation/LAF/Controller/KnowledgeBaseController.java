@@ -19,6 +19,9 @@ import org.springframework.web.bind.annotation.RestController;
  * during inference.
  * </p>
  *
+ * Note: This controller relies on an in-memory knowledge base.
+ * Therefore, the order of endpoint invocation is relevant.
+ *
  * @see ProgramLoaderService
  * @see AlgebraService
  * 

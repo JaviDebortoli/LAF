@@ -17,11 +17,11 @@ import java.util.Set;
 import org.springframework.stereotype.Service;
 
 /**
- * Service responsible for constructing the argumentation graph used in the
- * Label-Based Argumentation Framework (LAF). This component takes as input the
- * pieces of knowledge provided by the user (facts, rules and conflict relations)
- * and generates a structured graph with typed nodes and edges that reflects the
- * inferential structure of the argumentative process.
+ * Service responsible for transforms the internal argumentation graph into a 
+ * REST response representation used in the Label-Based Argumentation Framework (LAF). 
+ * This component takes as input the pieces of knowledge provided by the user (facts, 
+ * rules and conflict relations) and generates a structured graph with typed nodes 
+ * and edges that reflects the inferential structure of the argumentative process.
  *
  * <p>
  * The generated graph includes:
@@ -122,21 +122,26 @@ public class GraphBuilderService {
         for (KnowledgePiece kp : allNodes) {
             GraphNodeResponse nodeDto = new GraphNodeResponse();
 
-            if (kp instanceof Fact fact) {
-                String id = idMap.computeIfAbsent(kp, k -> "F" + (factCounter++));
-                nodeDto.setId(id);
-                nodeDto.setLabel(fact.getName() + "(" + fact.getArgument() + ")");
-                nodeDto.setType("FACT");
-                nodeDto.setAttributes(fact.getAttributes());
-                nodeDto.setDeltaAttributes(fact.getDeltaAttributes());
-
-            } else if (kp instanceof Rule rule) {
-                String id = idMap.computeIfAbsent(kp, k -> "R" + (ruleCounter++));
-                nodeDto.setId(id);
-                nodeDto.setLabel(rule.toString());
-                nodeDto.setType("RULE");
-                nodeDto.setAttributes(rule.getAttributes());
-                nodeDto.setDeltaAttributes(rule.getDeltaAttributes());
+            switch (kp) {
+                case Fact fact -> {
+                    String id = idMap.computeIfAbsent(kp, k -> "F" + (factCounter++));
+                    nodeDto.setId(id);
+                    nodeDto.setLabel(fact.getName() + "(" + fact.getArgument() + ")");
+                    nodeDto.setType("FACT");
+                    nodeDto.setAttributes(fact.getAttributes());
+                    nodeDto.setDeltaAttributes(fact.getDeltaAttributes());
+                    break;
+                }
+                case Rule rule -> {
+                    String id = idMap.computeIfAbsent(kp, k -> "R" + (ruleCounter++));
+                    nodeDto.setId(id);
+                    nodeDto.setLabel(rule.toString());
+                    nodeDto.setType("RULE");
+                    nodeDto.setAttributes(rule.getAttributes());
+                    nodeDto.setDeltaAttributes(rule.getDeltaAttributes());
+                    break;
+                }
+                default -> throw new IllegalStateException("Unexpected value: " + kp);
             }
 
             nodeDtos.add(nodeDto);

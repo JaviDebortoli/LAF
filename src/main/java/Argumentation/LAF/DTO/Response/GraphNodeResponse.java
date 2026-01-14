@@ -28,7 +28,11 @@ public class GraphNodeResponse {
     private String type;
     /** Attributes associated with the node. */
     private String[] attributes;
-    /** Delta attributes associated with the node. */
+    /**
+     * Variation applied to the node attributes during the last inference step.
+     * A value of {@code 0.0} indicates that the attribute was not modified by
+     * any algebraic operation.
+     */
     private String[] deltaAttributes;
 
     /**
