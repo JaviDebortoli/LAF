@@ -67,6 +67,7 @@ public class GraphRequest {
      *
      * @param rules list of {@link RuleDTO} objects
      */
+    @Deprecated
     public void setRules(List<RuleDTO> rules) {
         this.rules = rules;
     }
@@ -83,6 +84,7 @@ public class GraphRequest {
      *
      * @param operations the {@link OperationInputRequest} defining label operations
      */
+    @Deprecated
     public void setOperations(OperationInputRequest operations) {
         this.operations = operations;
     }

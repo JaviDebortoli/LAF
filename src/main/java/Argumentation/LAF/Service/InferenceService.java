@@ -36,7 +36,6 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class InferenceService {
-    
     /**
      * Builds an {@link ArgumentativeGraph} from the given facts, rules and
      * operation sets.
@@ -64,7 +63,6 @@ public class InferenceService {
      *         structure derived from the provided facts, rules and operations
      */
     public ArgumentativeGraph buildGraph(List<Fact> facts, List<Rule> rules, Map<String, OperationSet> operations) {
-        
         if (operations == null || operations.isEmpty()) {
             throw new IllegalStateException("Missing functions");
         }

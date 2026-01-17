@@ -31,7 +31,7 @@ public class ProgramMapperService {
     public List<Fact> mapFacts(List<FactDTO> factDtos) {
         List<Fact> facts = new ArrayList<>();
 
-        if (factDtos == null) {
+        if (factDtos == null || factDtos.isEmpty()) {
             return facts;
         }
 
@@ -55,7 +55,7 @@ public class ProgramMapperService {
     public List<Rule> mapRules(List<RuleDTO> ruleDtos) {
         List<Rule> rules = new ArrayList<>();
 
-        if (ruleDtos == null) {
+        if (ruleDtos == null || ruleDtos.isEmpty()) {
             return rules;
         }
 

@@ -26,6 +26,7 @@ public class GraphResponse {
      *
      * @return the list of {@link GraphNodeResponse} elements
      */
+    @Deprecated
     public List<GraphNodeResponse> getNodes() {
         return nodes;
     }
@@ -35,6 +36,7 @@ public class GraphResponse {
      *
      * @return the list of {@link GraphEdgeResponse} elements
      */
+    @Deprecated
     public List<GraphEdgeResponse> getEdges() {
         return edges;
     }

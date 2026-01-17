@@ -40,6 +40,7 @@ public class GraphNodeResponse {
      *
      * @return the node identifier
      */
+    @Deprecated
     public String getId() {
         return id;
     }
@@ -58,6 +59,7 @@ public class GraphNodeResponse {
      *
      * @return the node type
      */
+    @Deprecated
     public String getType() {
         return type;
     }
@@ -67,6 +69,7 @@ public class GraphNodeResponse {
      *
      * @return an array of attribute values
      */
+    @Deprecated
     public String[] getAttributes() {
         return attributes;
     }
@@ -76,6 +79,7 @@ public class GraphNodeResponse {
      *
      * @return an array representing delta attribute values
      */
+    @Deprecated
     public String[] getDeltaAttributes() {
         return deltaAttributes;
     }

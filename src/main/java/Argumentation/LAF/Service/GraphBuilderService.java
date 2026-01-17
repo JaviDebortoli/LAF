@@ -105,10 +105,8 @@ public class GraphBuilderService {
         ruleCounter = 1;
         
         Map<KnowledgePiece, String> idMap = new HashMap<>();
-        // Collect all nodes of the graph
-        Set<KnowledgePiece> allNodes = new LinkedHashSet<>();
-        // Map keys (can be Rules or Facts)
-        allNodes.addAll(graph.edges().keySet());
+        // All nodes of the graph
+        Set<KnowledgePiece> allNodes = new LinkedHashSet<>(graph.edges().keySet());
         // Map values (always Facts)
         for (List<Fact> children : graph.edges().values()) {
             allNodes.addAll(children);
@@ -130,7 +128,6 @@ public class GraphBuilderService {
                     nodeDto.setType("FACT");
                     nodeDto.setAttributes(fact.getAttributes());
                     nodeDto.setDeltaAttributes(fact.getDeltaAttributes());
-                    break;
                 }
                 case Rule rule -> {
                     String id = idMap.computeIfAbsent(kp, k -> "R" + (ruleCounter++));
@@ -139,7 +136,6 @@ public class GraphBuilderService {
                     nodeDto.setType("RULE");
                     nodeDto.setAttributes(rule.getAttributes());
                     nodeDto.setDeltaAttributes(rule.getDeltaAttributes());
-                    break;
                 }
                 default -> throw new IllegalStateException("Unexpected value: " + kp);
             }

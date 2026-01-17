@@ -68,11 +68,9 @@ public class GraphController {
      */
     @PostMapping("/graph")
     public ResponseEntity<GraphResponse> buildGraph(@RequestBody GraphRequest request) {
-
         var facts = programMapperService.mapFacts(request.getFacts());
         var rules = programMapperService.mapRules(request.getRules());
         var operations = algebraMapperService.mapOperations(request.getOperations());
-
         var argumentativeGraph = inferenceService.buildGraph(facts, rules, operations);
         var response = graphBuilderService.toGraphResponse(argumentativeGraph);
 

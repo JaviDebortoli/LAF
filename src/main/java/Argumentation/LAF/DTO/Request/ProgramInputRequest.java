@@ -22,6 +22,7 @@ import java.util.List;
  * 
  * @author JaviDebórtoli
  */
+@Deprecated
 public class ProgramInputRequest {
     /** List of facts provided as part of the input program. */
     private List<FactDTO> facts;
@@ -42,6 +43,7 @@ public class ProgramInputRequest {
      *
      * @return list of {@link RuleDTO} objects, or {@code null} if none were provided
      */
+    @Deprecated
     public List<RuleDTO> getRules() {
         return rules;
     }
@@ -60,6 +62,7 @@ public class ProgramInputRequest {
      *
      * @param rules list of {@link RuleDTO} objects
      */
+    @Deprecated
     public void setRules(List<RuleDTO> rules) {
         this.rules = rules;
     }
