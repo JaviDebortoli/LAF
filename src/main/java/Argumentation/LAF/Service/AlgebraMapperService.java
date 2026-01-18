@@ -33,7 +33,7 @@ public class AlgebraMapperService {
      *
      * @param request the input request containing label operation definitions
      * @return a map associating label names with their corresponding
-     *         {@link OperationSet} instances (empty if input is null)
+     * {@link OperationSet} instances (empty if input is null)
      */
     public Map<String, OperationSet> mapOperations(OperationInputRequest request) {
         Map<String, OperationSet> operationsByLabel = new HashMap<>();
