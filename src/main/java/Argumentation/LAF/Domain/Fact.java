@@ -1,7 +1,5 @@
 package Argumentation.LAF.Domain;
 
-import java.util.Arrays;
-
 /**
  * Represents an atomic fact in the knowledge base.
  * <p>
@@ -58,10 +56,8 @@ public class Fact extends KnowledgePiece{
      */
     @Override
     public String toString() {
-        return name + '('
-                + argument + "). "
-                + Arrays.toString(attributes)
-                + " "
-                + Arrays.toString(deltaAttributes);
+        return name 
+                + '('
+                + argument + ").";
     }
 }

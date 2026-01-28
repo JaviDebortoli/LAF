@@ -17,6 +17,5 @@ Argumentation\LAF\DTO\LabelOperationsDTO.class
 Argumentation\LAF\Domain\Fact.class
 Argumentation\LAF\Domain\InferenceEngine.class
 Argumentation\LAF\Domain\PairInConflict.class
-Argumentation\LAF\DTO\Request\ProgramInputRequest.class
 Argumentation\LAF\Controller\GraphController.class
 Argumentation\LAF\Domain\KnowledgePiece.class

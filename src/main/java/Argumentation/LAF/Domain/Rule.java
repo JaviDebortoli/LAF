@@ -84,10 +84,7 @@ public class Rule extends KnowledgePiece{
         return head 
                 + "(X) :- " 
                 + bodyString 
-                + ". " 
-                + Arrays.toString(attributes)
-                + " "
-                + Arrays.toString(deltaAttributes);
+                + ".";
     }
     
 }
