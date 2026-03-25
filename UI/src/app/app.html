@@ -1,0 +1,212 @@
+<main class="page">
+  <header class="page-header">
+    <h1>Labeled Argumentation Frameworks (LAF)</h1>
+    <p>
+      A formalism that models arguments, their relationships, and associated labels to evaluate how conclusions
+      are supported, combined, and resolved in the presence of conflict.
+    </p>
+  </header>
+
+  <section class="card">
+    <div class="card-header">
+      <h2>1) Knowledge Program</h2>
+      <div class="actions">
+        <button type="button" (click)="loadExample()">Load example</button>
+      </div>
+    </div>
+
+    <p class="hint">Enter facts and rules with their associated labels.</p>
+
+    <textarea
+      [(ngModel)]="programText"
+      (ngModelChange)="onProgramTextChange($event)"
+      class="program-input"
+      rows="14"
+      placeholder="Paste your LAF program here"
+    ></textarea>
+  </section>
+
+  <section class="card">
+    <div class="card-header">
+      <h2>2) Label Operations</h2>
+    </div>
+
+    @if (operationRows.length === 0) {
+      <p class="hint">No labels detected yet.</p>
+    } @else {
+      <div class="ops-tabs" role="tablist" aria-label="Operation labels">
+        @for (row of operationRows; track $index; let index = $index) {
+          <button
+            type="button"
+            role="tab"
+            class="operation-tab"
+            [class.active]="index === activeOperationTabIndex"
+            [attr.aria-selected]="index === activeOperationTabIndex"
+            [attr.aria-controls]="'operation-panel-' + index"
+            [id]="'operation-tab-' + index"
+            (click)="setActiveOperationTab(index)"
+          >
+            {{ row.labelName || 'label_' + (index + 1) }}
+          </button>
+        }
+      </div>
+
+      @if (operationRows[activeOperationTabIndex]; as activeRow) {
+        <article
+          class="operation-item"
+          role="tabpanel"
+          [id]="'operation-panel-' + activeOperationTabIndex"
+          [attr.aria-labelledby]="'operation-tab-' + activeOperationTabIndex"
+        >
+          <h3>{{ activeRow.labelName || 'label_' + (activeOperationTabIndex + 1) }}</h3>
+
+          <label>
+            Label name
+            <input
+              [(ngModel)]="activeRow.labelName"
+              type="text"
+              placeholder="label_1"
+              [name]="'label-name-' + activeOperationTabIndex"
+            />
+          </label>
+
+          <label>
+            Support
+            <input
+              [(ngModel)]="activeRow.supportFunction"
+              type="text"
+              placeholder="X * Y or Union"
+              [name]="'support-' + activeOperationTabIndex"
+            />
+          </label>
+
+          <label>
+            Aggregation
+            <input
+              [(ngModel)]="activeRow.aggregationFunction"
+              type="text"
+              placeholder="max(X,Y) or Union"
+              [name]="'aggregation-' + activeOperationTabIndex"
+            />
+          </label>
+
+          <label>
+            Conflict
+            <input
+              [(ngModel)]="activeRow.conflictFunction"
+              type="text"
+              placeholder="max(X-Y,0) or Intersection"
+              [name]="'conflict-' + activeOperationTabIndex"
+            />
+          </label>
+        </article>
+      }
+    }
+  </section>
+
+  <section class="card">
+    <div class="card-header">
+      <h2>3) Run Inference and Visualize Graph</h2>
+      <div class="actions">
+        <button type="button" (click)="processProgram()" [disabled]="isLoading()">
+          {{ isLoading() ? 'Processing...' : 'Process' }}
+        </button>
+      </div>
+    </div>
+
+    @if (parseErrors().length > 0) {
+      <div class="error-box">
+        <p>Validation errors:</p>
+        <ul>
+          @for (error of parseErrors(); track error) {
+            <li>{{ error }}</li>
+          }
+        </ul>
+      </div>
+    }
+
+    @if (backendError()) {
+      <div class="error-box">
+        <p>Backend error:</p>
+        <pre>{{ backendError() }}</pre>
+      </div>
+    }
+
+    @if (graphResponse(); as graph) {
+      <div class="graph-summary">
+        <span>Nodes: {{ graph.nodes.length }}</span>
+        <span>Edges: {{ graph.edges.length }}</span>
+      </div>
+
+      <div class="graph-layout">
+        <div #graphCanvas class="graph-canvas" aria-label="Argumentative graph"></div>
+
+        <aside class="node-detail">
+          <h3>Selected node details</h3>
+          @if (!selectedNode()) {
+            <p class="hint">Click a node to inspect its details.</p>
+          } @else {
+            <p><strong>Label:</strong> {{ selectedNode()?.label }}</p>
+            <p><strong>Type:</strong> {{ selectedNode()?.type }}</p>
+
+            @if (getSelectedNodeDetailRows(); as rows) {
+              <table class="node-detail-table" aria-label="Label values detail">
+                <colgroup>
+                  <col class="label-col" />
+                  <col class="value-col" />
+                  <col class="value-col" />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>Label</th>
+                    <th>μ</th>
+                    <th>δ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of rows; track row.labelName + $index) {
+                    <tr>
+                      <td class="label-name-cell">
+                        <span class="label-dot" [style.background-color]="row.color"></span>
+                        {{ row.labelName }}
+                      </td>
+                      <td>
+                        <div class="value-cell">
+                          @if (row.mu.percentage !== null) {
+                            <div class="value-track" aria-hidden="true">
+                              <div
+                                class="value-fill"
+                                [style.background-color]="row.color"
+                                [style.width.%]="row.mu.percentage"
+                              ></div>
+                            </div>
+                          }
+                          <span class="value-text">{{ row.mu.displayValue }}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="value-cell">
+                          @if (row.delta.percentage !== null) {
+                            <div class="value-track" aria-hidden="true">
+                              <div
+                                class="value-fill"
+                                [style.background-color]="row.color"
+                                [style.width.%]="row.delta.percentage"
+                              ></div>
+                            </div>
+                          }
+                          <span class="value-text">{{ row.delta.displayValue }}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+          }
+        </aside>
+      </div>
+    }
+
+  </section>
+</main>
