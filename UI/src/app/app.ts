@@ -100,10 +100,16 @@ interface OperationRow {
   conflictFunction: string;
 }
 
-const EXAMPLE_PROGRAM = `reliableSource(reportA). {0.9, 0.8}
-supportedEvidence(reportA). {0.85, 0.7}
-~supportedEvidence(reportA). {0.4, 0.3}
-acceptClaim(X) :- reliableSource(X), supportedEvidence(X). {0.88, 0.75}`;
+const EXAMPLE_PROGRAM = `basicServices(houseA). {0.75, 0.95}
+goodNeighbors(houseA). {0.75, 0.9}
+gangOperate(houseA). {0.5, 1.0}
+buy(X) :- goodArea(X). {0.85, 1.0}
+goodArea(X) :- basicServices(X). {0.75, 0.95}
+goodArea(X) :- quietArea(X). {0.75, 0.9}
+quietArea(X) :- goodNeighbors(X). {0.75, 0.9}
+insecureArea(X) :- gangOperate(X). {0.5, 1.0}
+~goodArea(X) :- insecureArea(X). {0.5, 1.0}
+~buy(X) :- ~goodArea(X). {0.5, 0.8}`;
 
 @Component({
   selector: 'app-root',

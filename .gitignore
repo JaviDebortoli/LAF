@@ -33,10 +33,10 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Spring / Maven (backend)
-LAF/target/
-LAF/build/
-LAF/out/
-LAF/.mvn/timing.properties
+API/target/
+API/build/
+API/out/
+API/.mvn/timing.properties
 
 # Angular / Node (frontend)
 UI/node_modules/
