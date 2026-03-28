@@ -1,65 +1,65 @@
-# LAF UI (Angular)
+# UI LAF (Angular)
 
-Angular frontend for end-to-end interaction with the LAF backend.
+Frontend en Angular para la interaccion end-to-end con el backend LAF.
 
-It allows users to:
+Permite a los usuarios:
 
-- Enter a LAF knowledge program (facts and rules with labels).
-- Configure operations per label (support, aggregation, conflict).
-- Send inference requests to `POST /api/graph`.
-- Visualize and inspect the resulting argumentative graph.
+- Ingresar un programa de conocimiento LAF (hechos y reglas con labels).
+- Configurar operaciones por label (soporte, agregacion, conflicto).
+- Enviar solicitudes de inferencia a `POST /api/graph`.
+- Visualizar e inspeccionar el grafo argumentativo resultante.
 
-## Requirements
+## Requisitos
 
 - Node.js 20+
 - npm 10+
-- Backend running at `http://localhost:8080`
+- Backend corriendo en `http://localhost:8080`
 
-## Run locally
+## Ejecutar localmente
 
-### 1) Start backend
+### 1) Iniciar backend
 
-From `../LAF/`:
+Desde `../LAF/`:
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
-On Windows:
+En Windows:
 
 ```bash
 mvnw.cmd spring-boot:run
 ```
 
-### 2) Start frontend
+### 2) Iniciar frontend
 
-From this directory (`UI/`):
+Desde este directorio (`UI/`):
 
 ```bash
 npm install
 npm run start
 ```
 
-Frontend URL: `http://localhost:4200`.
+URL del frontend: `http://localhost:4200`.
 
-In development, `proxy.conf.json` forwards `/api` to `http://localhost:8080`.
+En desarrollo, `proxy.conf.json` redirige `/api` hacia `http://localhost:8080`.
 
-## Typical workflow
+## Flujo tipico
 
-1. Open `http://localhost:4200`.
-2. Load or enter a program in **Knowledge Program**.
-3. Configure **Label Operations**.
-4. Click **Process**.
-5. Inspect graph structure and selected node details.
+1. Abrir `http://localhost:4200`.
+2. Cargar o ingresar un programa en **Knowledge Program**.
+3. Configurar **Label Operations**.
+4. Hacer click en **Process**.
+5. Inspeccionar la estructura del grafo y el detalle de nodos seleccionados.
 
 ## Scripts
 
-- `npm run start` - start Angular dev server.
-- `npm run test` - run unit tests.
-- `npm run build` - create production build.
+- `npm run start` - inicia el servidor de desarrollo de Angular.
+- `npm run test` - ejecuta los tests unitarios.
+- `npm run build` - genera el build de produccion.
 
-## Notes
+## Notas
 
-- The UI uses Cytoscape for graph rendering.
-- The visual model includes inferential (`dMP`) and conflict (`CA`) aesthetic nodes.
-- This project is aligned with the root `README.md` and backend contract.
+- La UI usa Cytoscape para el renderizado del grafo.
+- El modelo visual incluye nodos esteticos inferenciales (`dMP`) y de conflicto (`CA`).
+- Este proyecto se alinea con el `README.md` raiz y con el contrato del backend.

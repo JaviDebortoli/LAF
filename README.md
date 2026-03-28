@@ -1,8 +1,8 @@
-# LAF - Implementacion del Formalismo
+# LAF - Implementacion del formalismo
 
-Este README documenta la implementacion del formalismo **Label-Based Argumentation Framework (LAF)** en este repositorio.
+Este README documenta la implementacion del formalismo **Label-Based Argumentation Framework (LAF)** en este monorepo.
 
-No reemplaza los README de `API/` y `UI/`: ellos cubren ejecucion, scripts y entorno. Este archivo se enfoca en la **semantica del modelo** y en como se materializa en el sistema.
+No reemplaza los README de `API/` y `UI/`: esos documentos cubren ejecucion local, scripts y entorno. Este archivo se enfoca en la **semantica del modelo** y en como se implementa en backend y frontend.
 
 ## 1) Modelo conceptual implementado
 
@@ -11,7 +11,7 @@ El sistema trabaja sobre programas formados por:
 - **Hechos**: `predicado(termino). {label_1; label_2; ...}`
 - **Reglas**: `cabeza(X) :- cuerpo1(X), cuerpo2(X), ... {label_1; label_2; ...}`
 
-Cada hecho o regla porta un vector de labels. Cada posicion del vector representa un atributo independiente de la algebra de etiquetas.
+Cada hecho o regla porta un vector de labels. Cada posicion del vector representa un atributo independiente dentro de la algebra de etiquetas.
 
 ## 2) Sintaxis de labels
 
@@ -33,7 +33,7 @@ La coma se reserva para extremos de intervalos numericos dentro de corchetes.
 ### 3.2 Cualitativos
 
 - Se interpretan como conjuntos de simbolos.
-- En la implementacion actual:
+- En la implementacion actual del backend:
   - soporte -> `Union`
   - agregacion -> `Union`
   - conflicto -> `Intersection`
@@ -52,7 +52,7 @@ Semantica implementada:
 
 Esto aplica tanto a hechos como a reglas.
 
-## 5) Flujo inferencial LAF en el backend
+## 5) Flujo de inferencia LAF en el backend
 
 El motor sigue este orden conceptual:
 
@@ -63,7 +63,7 @@ El motor sigue este orden conceptual:
 5. Detecta contradicciones `p(X)` vs `~p(X)` y aplica **conflicto**.
 6. Devuelve el grafo argumentativo con nodos y aristas tipadas.
 
-## 6) Representacion de grafo y visualizacion
+## 6) Representacion del grafo y visualizacion
 
 La salida conserva la estructura argumentativa para visualizacion:
 
@@ -71,9 +71,9 @@ La salida conserva la estructura argumentativa para visualizacion:
 - Relaciones de soporte/agregacion/conflicto
 - Valores `mu` y `delta` por atributo
 
-Para nodos originados en el programa, la respuesta incluye metadata de intervalos y claves de origen estables para habilitar control interactivo en frontend.
+Para nodos originados en el programa, la respuesta incluye metadata de intervalos y claves de origen estables para habilitar control interactivo en la UI.
 
-## 7) Interaccion de intervalos en UI
+## 7) Interaccion de intervalos en la UI
 
 La interfaz permite ajustar labels intervalares desde el detalle del nodo:
 

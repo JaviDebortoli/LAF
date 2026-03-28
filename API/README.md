@@ -1,55 +1,55 @@
-# LAF Backend (Spring Boot)
+# Backend LAF (Spring Boot)
 
-Spring Boot backend (Java 25) implementing the core inference logic of the Label-Based Argumentation Framework (LAF).
+Backend en Spring Boot (Java 25) que implementa la logica principal de inferencia del Label-Based Argumentation Framework (LAF).
 
-## Responsibilities
+## Responsabilidades
 
-- Parse and process facts and rules with label vectors.
-- Apply support, aggregation, and conflict operations per attribute.
-- Build and expose the inferred argumentative graph via REST.
+- Parsear y procesar hechos y reglas con vectores de labels.
+- Aplicar operaciones de soporte, agregacion y conflicto por atributo.
+- Construir y exponer por REST el grafo argumentativo inferido.
 
-Main endpoint:
+Endpoint principal:
 
 - `POST /api/graph`
 
-## Requirements
+## Requisitos
 
 - Java 25
-- Maven Wrapper (included)
+- Maven Wrapper (incluido)
 
-## Run locally
+## Ejecutar localmente
 
-From this directory (`LAF/`):
+Desde este directorio (`LAF/`):
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
-On Windows:
+En Windows:
 
 ```bash
 mvnw.cmd spring-boot:run
 ```
 
-Default URL: `http://localhost:8080`.
+URL por defecto: `http://localhost:8080`.
 
-## Build and test
+## Compilar y testear
 
 ```bash
 ./mvnw test
 ./mvnw package
 ```
 
-On Windows:
+En Windows:
 
 ```bash
 mvnw.cmd test
 mvnw.cmd package
 ```
 
-## Input/Output contract
+## Contrato de entrada/salida
 
-- Input: facts, rules, and operations per label.
-- Output: graph with typed nodes and edges (`nodes[]`, `edges[]`).
+- Entrada: hechos, reglas y operaciones por label.
+- Salida: grafo con nodos y aristas tipadas (`nodes[]`, `edges[]`).
 
-This backend is consumed by the Angular UI in `../UI/` and is aligned with the root `README.md` workflow.
+Este backend es consumido por la UI Angular en `../UI/` y se alinea con el flujo del `README.md` de la raiz.
