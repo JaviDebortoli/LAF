@@ -207,9 +207,11 @@ button[disabled] {
 }
 
 .graph-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 10px;
+  display: block;
+}
+
+.graph-stage {
+  position: relative;
 }
 
 .graph-canvas {
@@ -219,22 +221,64 @@ button[disabled] {
   background: #e2e3e5;
 }
 
-.node-detail {
+.node-detail-float {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  width: min(560px, calc(100% - 24px));
+  max-height: calc(100% - 24px);
+  overflow: auto;
   border: 1px solid #d8e0ea;
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 10px;
-  background: #fbfcfe;
+  background: rgba(251, 252, 254, 0.97);
+  backdrop-filter: blur(1px);
+  box-shadow: 0 8px 24px rgba(17, 24, 39, 0.2);
+  z-index: 20;
 }
 
-.node-detail h3 {
-  margin: 0 0 8px;
+.node-detail-float.is-dragged {
+  right: auto;
+  bottom: auto;
+}
+
+.node-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
   padding-bottom: 6px;
   border-bottom: 1px solid #e0e7f0;
+  cursor: grab;
+  user-select: none;
+}
+
+.node-detail-head:active {
+  cursor: grabbing;
+}
+
+.node-detail-float h3 {
+  margin: 0 0 8px;
+  padding-bottom: 0;
+  border-bottom: 0;
   font-size: 14px;
   font-weight: 600;
 }
 
-.node-detail p {
+.panel-close {
+  border: 1px solid #97a8bf;
+  background: #ffffff;
+  color: #223247;
+  padding: 3px 9px;
+  font-size: 12px;
+}
+
+.panel-close:hover {
+  background: #f0f4f8;
+}
+
+.node-detail-float p {
   margin: 4px 0;
   color: #223247;
   font-size: 12.5px;
@@ -249,11 +293,11 @@ button[disabled] {
 }
 
 .node-detail-table .label-col {
-  width: 42%;
+  width: 30%;
 }
 
 .node-detail-table .value-col {
-  width: 29%;
+  width: 35%;
 }
 
 .node-detail-table th,
@@ -284,13 +328,129 @@ button[disabled] {
 
 .value-cell {
   display: grid;
+  gap: 4px;
 }
 
 .value-track {
+  position: relative;
+  width: 100%;
   height: 7px;
   border-radius: 999px;
   background: #ced7e4;
   overflow: hidden;
+}
+
+.value-track-base {
+  position: absolute;
+  inset: 0;
+  background: #cfd7e3;
+  z-index: 1;
+}
+
+.value-editable-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  opacity: 0.35;
+  z-index: 2;
+}
+
+.value-blocked {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  opacity: 0.92;
+  z-index: 1;
+}
+
+.value-blocked-left {
+  left: 0;
+}
+
+.value-blocked-right {
+  right: 0;
+}
+
+.value-editable-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-top: 1px dashed rgba(15, 23, 42, 0.42);
+  border-bottom: 1px dashed rgba(15, 23, 42, 0.42);
+  z-index: 4;
+}
+
+.value-track-overlay {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 16px;
+}
+
+.value-slider-lane {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  min-width: 12px;
+  height: 14px;
+  z-index: 6;
+}
+
+.value-track-slider {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 100%;
+  height: 14px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  cursor: grab;
+}
+
+.value-track-slider:active {
+  cursor: grabbing;
+}
+
+.value-track-slider:focus-visible {
+  outline: 2px solid #1f2937;
+  outline-offset: 2px;
+}
+
+.value-track-slider::-webkit-slider-runnable-track {
+  height: 14px;
+  background: transparent;
+}
+
+.value-track-slider::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  margin-top: 1.5px;
+  border: 2px solid #ffffff;
+  background: var(--slider-color, #2563eb);
+  box-shadow: 0 0 0 1px rgba(18, 37, 59, 0.28);
+}
+
+.value-track-slider::-moz-range-track {
+  height: 14px;
+  background: transparent;
+}
+
+.value-track-slider::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  background: var(--slider-color, #2563eb);
+  box-shadow: 0 0 0 1px rgba(18, 37, 59, 0.28);
+}
+
+.value-fill {
+  position: relative;
+  z-index: 5;
 }
 
 .value-fill {
@@ -305,11 +465,16 @@ button[disabled] {
 }
 
 @media (max-width: 1040px) {
-  .graph-layout {
-    grid-template-columns: 1fr;
-  }
-
   .graph-canvas {
     min-height: 430px;
+  }
+
+  .node-detail-float {
+    left: 8px;
+    right: 8px;
+    top: auto;
+    bottom: 8px;
+    width: auto;
+    max-height: 62%;
   }
 }

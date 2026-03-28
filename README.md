@@ -1,83 +1,105 @@
-# Labeled Argumentation Frameworks (LAF)
+# LAF - Implementacion del Formalismo
 
-Monorepo with two projects:
+Este README documenta la implementacion del formalismo **Label-Based Argumentation Framework (LAF)** en este repositorio.
 
-- `LAF/`: Spring Boot backend (Java 25) implementing LAF inference logic.
-- `UI/`: Angular frontend to load programs, configure label operations, run inference, and visualize the resulting graph.
+No reemplaza los README de `API/` y `UI/`: ellos cubren ejecucion, scripts y entorno. Este archivo se enfoca en la **semantica del modelo** y en como se materializa en el sistema.
 
-## Repository structure
+## 1) Modelo conceptual implementado
 
-- `LAF/` -> REST API (`/api/graph`) and inference engine.
-- `UI/` -> Web interface for end-to-end experimentation.
-- `docs/` -> Supporting documentation (ignored in this environment).
+El sistema trabaja sobre programas formados por:
 
-## Requirements
+- **Hechos**: `predicado(termino). {label_1; label_2; ...}`
+- **Reglas**: `cabeza(X) :- cuerpo1(X), cuerpo2(X), ... {label_1; label_2; ...}`
 
-### Backend
-- Java 25
-- Maven Wrapper (included in `LAF/`)
+Cada hecho o regla porta un vector de labels. Cada posicion del vector representa un atributo independiente de la algebra de etiquetas.
 
-### Frontend
-- Node.js 20+
-- npm 10+
+## 2) Sintaxis de labels
 
-## Local setup
+La sintaxis actual separa labels con **punto y coma**:
 
-### 1) Start backend
+- Correcto: `{0.75; 0.95}`
+- Correcto: `{0.5; [0.6, 1.0]}`
+- Incorrecto: `{0.75, 0.95}` (la coma no separa labels)
 
-From `LAF/`:
+La coma se reserva para extremos de intervalos numericos dentro de corchetes.
 
-```bash
-./mvnw spring-boot:run
-```
+## 3) Labels numericos y cualitativos
 
-On Windows:
+### 3.1 Numericos
 
-```bash
-mvnw.cmd spring-boot:run
-```
+- Se interpretan como valores en `[0, 1]`.
+- Las operaciones de soporte, agregacion y conflicto se aplican por atributo.
 
-Backend URL: `http://localhost:8080`.
+### 3.2 Cualitativos
 
-### 2) Start frontend
+- Se interpretan como conjuntos de simbolos.
+- En la implementacion actual:
+  - soporte -> `Union`
+  - agregacion -> `Union`
+  - conflicto -> `Intersection`
 
-From `UI/`:
+## 4) Intervalos en labels numericos
 
-```bash
-npm install
-npm run start
-```
+Un atributo numerico puede declararse como intervalo:
 
-Frontend URL: `http://localhost:4200`.
+- Ejemplo: `basicServices(houseA). {0.5; [0.6, 1.0]}`
 
-In development, UI proxy routes `/api` to the backend.
+Semantica implementada:
 
-## Typical workflow
+1. El intervalo se normaliza como `[min, max]` (si viene invertido, se corrige).
+2. Para la inferencia inicial se usa el **extremo menor** (`min`).
+3. Se conserva metadata del intervalo para la interaccion en UI.
 
-1. Enter or load a program in **Knowledge Program**.
-2. Configure operations in **Label Operations**.
-3. Click **Process**.
-4. Analyze graph structure and selected node details.
+Esto aplica tanto a hechos como a reglas.
 
-## Main API
+## 5) Flujo inferencial LAF en el backend
 
-- `POST /api/graph`
-  - Input: facts, rules, and label operations.
-  - Output: inferred argumentative graph nodes and edges.
+El motor sigue este orden conceptual:
 
-## Useful commands
+1. Carga hechos iniciales.
+2. Activa reglas cuando el cuerpo queda satisfecho.
+3. Calcula **soporte** para hechos derivados.
+4. Ejecuta **agregacion** cuando hay derivaciones equivalentes.
+5. Detecta contradicciones `p(X)` vs `~p(X)` y aplica **conflicto**.
+6. Devuelve el grafo argumentativo con nodos y aristas tipadas.
 
-### UI
-- `npm run start`
-- `npm run test`
-- `npm run build`
+## 6) Representacion de grafo y visualizacion
 
-### Backend
-- `./mvnw test`
-- `./mvnw package`
-- `./mvnw spring-boot:run`
+La salida conserva la estructura argumentativa para visualizacion:
 
-## Notes
+- Nodos de hechos y reglas
+- Relaciones de soporte/agregacion/conflicto
+- Valores `mu` y `delta` por atributo
 
-- The frontend is focused on academic experimentation and graph analysis.
-- The backend and UI are designed to keep the `/api/graph` contract stable.
+Para nodos originados en el programa, la respuesta incluye metadata de intervalos y claves de origen estables para habilitar control interactivo en frontend.
+
+## 7) Interaccion de intervalos en UI
+
+La interfaz permite ajustar labels intervalares desde el detalle del nodo:
+
+- El detalle aparece en una **ventana flotante** sobre el grafo.
+- Las barras de `mu` mantienen referencia global `0..1`.
+- El control deslizante solo se mueve dentro del tramo editable del intervalo.
+- Al confirmar el cambio, se reprocesa el programa y se redibuja el grafo con los nuevos valores seleccionados.
+
+## 8) Correspondencia teoria <-> implementacion
+
+La teoria formal completa esta en:
+
+- `docs/theory/laf-formalism.md`
+
+La implementacion en este repositorio materializa ese formalismo mediante:
+
+- Algebra por atributo (soporte/agregacion/conflicto)
+- Propagacion de labels en el grafo argumentativo
+- Resolucion de conflicto por contradiccion explicita
+- Evaluacion gradual de conclusiones segun labels
+
+## 9) Alcance de este documento
+
+Este README define el marco de implementacion del formalismo LAF en el monorepo.
+
+Para ejecutar backend/frontend, scripts y entorno, ver:
+
+- `API/README.md`
+- `UI/README.md`

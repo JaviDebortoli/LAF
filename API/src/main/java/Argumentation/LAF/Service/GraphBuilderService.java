@@ -128,6 +128,8 @@ public class GraphBuilderService {
                     nodeDto.setType("FACT");
                     nodeDto.setAttributes(fact.getAttributes());
                     nodeDto.setDeltaAttributes(fact.getDeltaAttributes());
+                    nodeDto.setAttributeIntervals(fact.getAttributeIntervals());
+                    nodeDto.setSourceKey(fact.getSourceKey());
                 }
                 case Rule rule -> {
                     String id = idMap.computeIfAbsent(kp, k -> "R" + (ruleCounter++));
@@ -136,6 +138,8 @@ public class GraphBuilderService {
                     nodeDto.setType("RULE");
                     nodeDto.setAttributes(rule.getAttributes());
                     nodeDto.setDeltaAttributes(rule.getDeltaAttributes());
+                    nodeDto.setAttributeIntervals(rule.getAttributeIntervals());
+                    nodeDto.setSourceKey(rule.getSourceKey());
                 }
                 default -> throw new IllegalStateException("Unexpected value: " + kp);
             }

@@ -39,10 +39,25 @@ public class Rule extends KnowledgePiece{
      * @param attributes initial label values for this rule
      */
     public Rule(String head, List<String> body, String[] attributes) {
+        this(head, body, attributes, null, null);
+    }
+
+    /**
+     * Creates a rule with optional interval metadata and source key.
+     *
+     * @param head head predicate name
+     * @param body list of body predicate names
+     * @param attributes initial label values for this rule
+     * @param attributeIntervals optional interval bounds for each label position
+     * @param sourceKey optional stable key from input parser
+     */
+    public Rule(String head, List<String> body, String[] attributes, Double[][] attributeIntervals, String sourceKey) {
         this.head = head;
         this.body = body;
         this.attributes = attributes;
         this.deltaAttributes = attributes;
+        this.attributeIntervals = attributeIntervals;
+        this.sourceKey = sourceKey;
     }
 
     /**

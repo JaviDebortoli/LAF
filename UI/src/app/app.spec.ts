@@ -2,8 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { App } from './app';
 
 describe('App', () => {
-  const THREE_LABELS_PROGRAM = `goodArea(houseA). {0.8,high,trusted}
-buy(X) :- goodArea(X). {0.85,expert,reliable}`;
+  const THREE_LABELS_PROGRAM = `goodArea(houseA). {0.8;high;trusted}
+buy(X) :- goodArea(X). {0.85;expert;reliable}`;
 
   const ONE_LABEL_PROGRAM = `goodArea(houseA). {0.8}
 buy(X) :- goodArea(X). {0.85}`;
@@ -24,8 +24,12 @@ buy(X) :- goodArea(X). {0.85}`;
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Labeled Argumentation Frameworks (LAF)');
-    expect(compiled.querySelector('.page-header p')?.textContent).toContain('A formalism that models arguments');
+    expect(compiled.querySelector('h1')?.textContent).toContain(
+      'Labeled Argumentation Frameworks (LAF)',
+    );
+    expect(compiled.querySelector('.page-header p')?.textContent).toContain(
+      'A formalism that models arguments',
+    );
   });
 
   it('should render dynamic tabs based on detected labels', () => {
@@ -64,7 +68,9 @@ buy(X) :- goodArea(X). {0.85}`;
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    const labelNameInput = compiled.querySelector<HTMLInputElement>('.operation-item input[type="text"]');
+    const labelNameInput = compiled.querySelector<HTMLInputElement>(
+      '.operation-item input[type="text"]',
+    );
     expect(labelNameInput).not.toBeNull();
 
     if (!labelNameInput) {
@@ -113,6 +119,33 @@ buy(X) :- goodArea(X). {0.85}`;
     expect(app.parseErrors()).toContain('Attribute 3: label name is required.');
   });
 
+  it('should parse semicolon-separated attributes and intervals using lower bounds', () => {
+    const fixture = TestBed.createComponent(App);
+    const app = fixture.componentInstance as any;
+
+    const parsed = app.parseProgram(
+      `basicServices(houseA). {0.5; [0.6, 1.0]}\nquietArea(X) :- basicServices(X). {0.7; [0.8, 0.9]}`,
+    );
+
+    expect(parsed).not.toBeNull();
+    expect(parsed.facts[0].attributes).toEqual(['0.5', '0.6']);
+    expect(parsed.facts[0].attributeIntervals).toEqual([null, [0.6, 1]]);
+    expect(parsed.rules[0].attributes).toEqual(['0.7', '0.8']);
+    expect(parsed.rules[0].attributeIntervals).toEqual([null, [0.8, 0.9]]);
+  });
+
+  it('should reject comma-separated labels outside interval bounds', () => {
+    const fixture = TestBed.createComponent(App);
+    const app = fixture.componentInstance;
+
+    app.onProgramTextChange('basicServices(houseA). {0.5, 0.7}');
+    app.processProgram();
+
+    expect(app.parseErrors()).toContain(
+      'Line 1: invalid label separators. Use semicolons between attributes and commas only inside intervals [min, max].',
+    );
+  });
+
   it('should collapse duplicate fact nodes before creating CA conflicts', () => {
     const fixture = TestBed.createComponent(App);
     const app = fixture.componentInstance as any;
@@ -122,9 +155,27 @@ buy(X) :- goodArea(X). {0.85}`;
       edges: Array<{ from: string; to: string; kind: string }>;
     } = app.buildVisualGraph({
       nodes: [
-        { id: 'F_BUY_1', label: 'buy(houseA)', type: 'FACT', attributes: ['1', '1'], deltaAttributes: ['1', '1'] },
-        { id: 'F_BUY_2', label: 'buy(houseA)', type: 'FACT', attributes: ['1', '1'], deltaAttributes: ['0', '0'] },
-        { id: 'F_NOT_BUY', label: '~buy(houseA)', type: 'FACT', attributes: ['1', '1'], deltaAttributes: ['0', '0'] },
+        {
+          id: 'F_BUY_1',
+          label: 'buy(houseA)',
+          type: 'FACT',
+          attributes: ['1', '1'],
+          deltaAttributes: ['1', '1'],
+        },
+        {
+          id: 'F_BUY_2',
+          label: 'buy(houseA)',
+          type: 'FACT',
+          attributes: ['1', '1'],
+          deltaAttributes: ['0', '0'],
+        },
+        {
+          id: 'F_NOT_BUY',
+          label: '~buy(houseA)',
+          type: 'FACT',
+          attributes: ['1', '1'],
+          deltaAttributes: ['0', '0'],
+        },
         {
           id: 'R_BUY',
           label: 'buy(X) :- goodArea(X).',
@@ -151,17 +202,23 @@ buy(X) :- goodArea(X). {0.85}`;
       ],
     });
 
-    const buyFactNodes = visual.nodes.filter((node: { id: string; label: string; type: string }) => {
-      return node.type === 'FACT' && node.label === 'buy(houseA)';
-    });
+    const buyFactNodes = visual.nodes.filter(
+      (node: { id: string; label: string; type: string }) => {
+        return node.type === 'FACT' && node.label === 'buy(houseA)';
+      },
+    );
     expect(buyFactNodes.length).toBe(1);
 
-    const caNodes = visual.nodes.filter((node: { id: string; label: string; type: string }) => node.type === 'CA');
+    const caNodes = visual.nodes.filter(
+      (node: { id: string; label: string; type: string }) => node.type === 'CA',
+    );
     expect(caNodes.length).toBe(1);
 
-    const conflictEdges = visual.edges.filter((edge: { from: string; to: string; kind: string }) => {
-      return edge.kind === 'CONFLICT';
-    });
+    const conflictEdges = visual.edges.filter(
+      (edge: { from: string; to: string; kind: string }) => {
+        return edge.kind === 'CONFLICT';
+      },
+    );
     expect(conflictEdges.length).toBe(2);
   });
 
@@ -174,8 +231,20 @@ buy(X) :- goodArea(X). {0.85}`;
       edges: Array<{ from: string; to: string; kind: string }>;
     } = app.buildVisualGraph({
       nodes: [
-        { id: 'F_QA', label: 'quietArea(houseA)', type: 'FACT', attributes: ['1', '1'], deltaAttributes: ['1', '1'] },
-        { id: 'F_BS', label: 'basicServices(houseA)', type: 'FACT', attributes: ['0.75', '0.95'], deltaAttributes: ['0.75', '0.95'] },
+        {
+          id: 'F_QA',
+          label: 'quietArea(houseA)',
+          type: 'FACT',
+          attributes: ['1', '1'],
+          deltaAttributes: ['1', '1'],
+        },
+        {
+          id: 'F_BS',
+          label: 'basicServices(houseA)',
+          type: 'FACT',
+          attributes: ['0.75', '0.95'],
+          deltaAttributes: ['0.75', '0.95'],
+        },
         {
           id: 'R_GOOD_Q',
           label: 'goodArea(X) :- quietArea(X).',
@@ -190,9 +259,27 @@ buy(X) :- goodArea(X). {0.85}`;
           attributes: ['0.75', '0.95'],
           deltaAttributes: ['0.75', '0.95'],
         },
-        { id: 'F_GOOD_A', label: 'goodArea(houseA)', type: 'FACT', attributes: ['1', '1'], deltaAttributes: ['1', '1'] },
-        { id: 'F_GOOD_B', label: 'goodArea(houseA)', type: 'FACT', attributes: ['1', '1'], deltaAttributes: ['1', '1'] },
-        { id: 'F_GOOD_FINAL', label: 'goodArea(houseA)', type: 'FACT', attributes: ['1', '1'], deltaAttributes: ['0', '0'] },
+        {
+          id: 'F_GOOD_A',
+          label: 'goodArea(houseA)',
+          type: 'FACT',
+          attributes: ['1', '1'],
+          deltaAttributes: ['1', '1'],
+        },
+        {
+          id: 'F_GOOD_B',
+          label: 'goodArea(houseA)',
+          type: 'FACT',
+          attributes: ['1', '1'],
+          deltaAttributes: ['1', '1'],
+        },
+        {
+          id: 'F_GOOD_FINAL',
+          label: 'goodArea(houseA)',
+          type: 'FACT',
+          attributes: ['1', '1'],
+          deltaAttributes: ['0', '0'],
+        },
         {
           id: 'R_BUY',
           label: 'buy(X) :- goodArea(X).',
@@ -207,10 +294,34 @@ buy(X) :- goodArea(X). {0.85}`;
           attributes: ['0.5', '0.8'],
           deltaAttributes: ['0.5', '0.8'],
         },
-        { id: 'F_BUY_1', label: 'buy(houseA)', type: 'FACT', attributes: ['1', '1'], deltaAttributes: ['1', '1'] },
-        { id: 'F_BUY_2', label: 'buy(houseA)', type: 'FACT', attributes: ['1', '1'], deltaAttributes: ['0', '0'] },
-        { id: 'F_NOT_GOOD', label: '~goodArea(houseA)', type: 'FACT', attributes: ['1', '1'], deltaAttributes: ['0', '0'] },
-        { id: 'F_NOT_BUY', label: '~buy(houseA)', type: 'FACT', attributes: ['1', '1'], deltaAttributes: ['0', '0'] },
+        {
+          id: 'F_BUY_1',
+          label: 'buy(houseA)',
+          type: 'FACT',
+          attributes: ['1', '1'],
+          deltaAttributes: ['1', '1'],
+        },
+        {
+          id: 'F_BUY_2',
+          label: 'buy(houseA)',
+          type: 'FACT',
+          attributes: ['1', '1'],
+          deltaAttributes: ['0', '0'],
+        },
+        {
+          id: 'F_NOT_GOOD',
+          label: '~goodArea(houseA)',
+          type: 'FACT',
+          attributes: ['1', '1'],
+          deltaAttributes: ['0', '0'],
+        },
+        {
+          id: 'F_NOT_BUY',
+          label: '~buy(houseA)',
+          type: 'FACT',
+          attributes: ['1', '1'],
+          deltaAttributes: ['0', '0'],
+        },
       ],
       edges: [
         { from: 'F_QA', to: 'F_GOOD_A', kind: 'SUPPORT' },
@@ -241,19 +352,31 @@ buy(X) :- goodArea(X). {0.85}`;
     });
     expect(buyFacts.length).toBe(1);
 
-    const goodAreaFacts = visual.nodes.filter((node: { id: string; label: string; type: string }) => {
-      return node.type === 'FACT' && node.label === 'goodArea(houseA)';
-    });
+    const goodAreaFacts = visual.nodes.filter(
+      (node: { id: string; label: string; type: string }) => {
+        return node.type === 'FACT' && node.label === 'goodArea(houseA)';
+      },
+    );
     expect(goodAreaFacts.length).toBe(1);
 
-    const caNodes = visual.nodes.filter((node: { id: string; label: string; type: string }) => node.type === 'CA');
+    const caNodes = visual.nodes.filter(
+      (node: { id: string; label: string; type: string }) => node.type === 'CA',
+    );
     expect(caNodes.length).toBe(1);
 
     const targetGoodAreaId = goodAreaFacts[0].id;
-    const nodeTypeById = new Map(visual.nodes.map((node: { id: string; type: string }) => [node.id, node.type]));
-    const incomingSupportToGoodArea = visual.edges.filter((edge: { from: string; to: string; kind: string }) => {
-      return edge.kind === 'SUPPORT' && edge.to === targetGoodAreaId && nodeTypeById.get(edge.from) === 'DMP';
-    });
+    const nodeTypeById = new Map(
+      visual.nodes.map((node: { id: string; type: string }) => [node.id, node.type]),
+    );
+    const incomingSupportToGoodArea = visual.edges.filter(
+      (edge: { from: string; to: string; kind: string }) => {
+        return (
+          edge.kind === 'SUPPORT' &&
+          edge.to === targetGoodAreaId &&
+          nodeTypeById.get(edge.from) === 'DMP'
+        );
+      },
+    );
     expect(incomingSupportToGoodArea.length).toBe(2);
   });
 });

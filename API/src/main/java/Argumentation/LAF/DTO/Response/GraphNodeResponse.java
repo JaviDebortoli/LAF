@@ -34,6 +34,10 @@ public class GraphNodeResponse {
      * any algebraic operation.
      */
     private String[] deltaAttributes;
+    /** Optional interval bounds aligned with attributes. */
+    private Double[][] attributeIntervals;
+    /** Optional stable source key for program-origin nodes. */
+    private String sourceKey;
 
     /**
      * Returns the unique identifier of the node.
@@ -85,6 +89,26 @@ public class GraphNodeResponse {
     }
 
     /**
+     * Returns optional interval bounds aligned with attributes.
+     *
+     * @return interval matrix where each row is [min, max], or null entries
+     */
+    @Deprecated
+    public Double[][] getAttributeIntervals() {
+        return attributeIntervals;
+    }
+
+    /**
+     * Returns optional stable source key for the node.
+     *
+     * @return source key, or null
+     */
+    @Deprecated
+    public String getSourceKey() {
+        return sourceKey;
+    }
+
+    /**
      * Sets the unique identifier of the node.
      *
      * @param id the node identifier
@@ -127,5 +151,23 @@ public class GraphNodeResponse {
      */
     public void setDeltaAttributes(String[] deltaAttributes) {
         this.deltaAttributes = deltaAttributes;
+    }
+
+    /**
+     * Sets optional interval bounds aligned with attributes.
+     *
+     * @param attributeIntervals interval matrix where each row is [min, max], or null entries
+     */
+    public void setAttributeIntervals(Double[][] attributeIntervals) {
+        this.attributeIntervals = attributeIntervals;
+    }
+
+    /**
+     * Sets optional stable source key for the node.
+     *
+     * @param sourceKey source key
+     */
+    public void setSourceKey(String sourceKey) {
+        this.sourceKey = sourceKey;
     }
 }

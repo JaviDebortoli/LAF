@@ -12,12 +12,16 @@ interface FactInput {
   name: string;
   argument: string;
   attributes: string[];
+  attributeIntervals: (readonly [number, number] | null)[];
+  sourceKey: string;
 }
 
 interface RuleInput {
   headName: string;
   bodyLiterals: string[];
   attributes: string[];
+  attributeIntervals: (readonly [number, number] | null)[];
+  sourceKey: string;
 }
 
 interface LabelOperationInput {
@@ -41,6 +45,8 @@ interface GraphNode {
   type: string;
   attributes: string[];
   deltaAttributes: string[];
+  attributeIntervals?: (readonly [number, number] | null)[];
+  sourceKey?: string;
 }
 
 interface GraphEdge {
@@ -75,8 +81,11 @@ interface NodeLabelDetailCell {
 interface NodeLabelDetailRow {
   labelName: string;
   color: string;
+  attributeIndex: number;
   mu: NodeLabelDetailCell;
   delta: NodeLabelDetailCell;
+  intervalBounds: readonly [number, number] | null;
+  sliderValue: number | null;
 }
 
 interface GraphResponse {
@@ -91,6 +100,11 @@ interface ParsedProgram {
   attributeKinds: AttributeKind[];
 }
 
+interface ParsedAttributeToken {
+  value: string;
+  interval: readonly [number, number] | null;
+}
+
 type AttributeKind = 'numeric' | 'qualitative';
 
 interface OperationRow {
@@ -100,16 +114,16 @@ interface OperationRow {
   conflictFunction: string;
 }
 
-const EXAMPLE_PROGRAM = `basicServices(houseA). {0.75, 0.95}
-goodNeighbors(houseA). {0.75, 0.9}
-gangOperate(houseA). {0.5, 1.0}
-buy(X) :- goodArea(X). {0.85, 1.0}
-goodArea(X) :- basicServices(X). {0.75, 0.95}
-goodArea(X) :- quietArea(X). {0.75, 0.9}
-quietArea(X) :- goodNeighbors(X). {0.75, 0.9}
-insecureArea(X) :- gangOperate(X). {0.5, 1.0}
-~goodArea(X) :- insecureArea(X). {0.5, 1.0}
-~buy(X) :- ~goodArea(X). {0.5, 0.8}`;
+const EXAMPLE_PROGRAM = `basicServices(houseA). {0.75; [0.80, 0.95]}
+goodNeighbors(houseA). {0.75; 0.9}
+gangOperate(houseA). {0.5; [0.7, 1.0]}
+buy(X) :- goodArea(X). {0.85; 1.0}
+goodArea(X) :- basicServices(X). {0.75; [0.8, 0.95]}
+goodArea(X) :- quietArea(X). {0.75; 0.9}
+quietArea(X) :- goodNeighbors(X). {0.75; 0.9}
+insecureArea(X) :- gangOperate(X). {0.5; [0.7, 1.0]}
+~goodArea(X) :- insecureArea(X). {0.5; [0.7, 1.0]}
+~buy(X) :- ~goodArea(X). {0.5; 0.8}`;
 
 @Component({
   selector: 'app-root',
@@ -119,6 +133,7 @@ insecureArea(X) :- gangOperate(X). {0.5, 1.0}
 })
 export class App implements AfterViewInit, OnDestroy {
   @ViewChild('graphCanvas') graphCanvas?: ElementRef<HTMLDivElement>;
+  @ViewChild('graphStage') graphStage?: ElementRef<HTMLDivElement>;
 
   readonly backendUrl = '/api/graph';
 
@@ -132,10 +147,30 @@ export class App implements AfterViewInit, OnDestroy {
 
   readonly graphResponse = signal<GraphResponse | null>(null);
   readonly selectedNode = signal<GraphNode | null>(null);
+  readonly detailPanelPosition = signal<{ left: number; top: number } | null>(null);
 
-  private readonly detailBarPalette = ['#2563eb', '#059669', '#dc2626', '#d97706', '#7c3aed', '#0891b2'];
+  private readonly detailBarPalette = [
+    '#2563eb',
+    '#059669',
+    '#dc2626',
+    '#d97706',
+    '#7c3aed',
+    '#0891b2',
+  ];
+  private readonly intervalSelections = new Map<string, number>();
+  private readonly intervalPreviewSelections = new Map<string, number>();
 
   private cy: Core | null = null;
+  private panelDragState:
+    | {
+        offsetX: number;
+        offsetY: number;
+        panelWidth: number;
+        panelHeight: number;
+      }
+    | null = null;
+  private readonly onPanelDragMove = (event: MouseEvent) => this.handlePanelDragMove(event);
+  private readonly onPanelDragEnd = () => this.endDetailPanelDrag();
 
   constructor(private readonly http: HttpClient) {
     this.resetOperationsByProgram();
@@ -151,10 +186,13 @@ export class App implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.cy?.destroy();
     this.cy = null;
+    this.endDetailPanelDrag();
   }
 
   loadExample(): void {
     this.programText = EXAMPLE_PROGRAM;
+    this.intervalSelections.clear();
+    this.intervalPreviewSelections.clear();
     this.resetOperationsByProgram();
     this.graphResponse.set(null);
     this.selectedNode.set(null);
@@ -163,6 +201,8 @@ export class App implements AfterViewInit, OnDestroy {
 
   onProgramTextChange(nextText: string): void {
     this.programText = nextText;
+    this.intervalSelections.clear();
+    this.intervalPreviewSelections.clear();
     this.parseErrors.set([]);
     this.synchronizeOperationsFromCurrentProgram();
   }
@@ -175,9 +215,76 @@ export class App implements AfterViewInit, OnDestroy {
     this.activeOperationTabIndex = index;
   }
 
-  processProgram(): void {
+  closeSelectedNodeDetails(): void {
+    this.selectedNode.set(null);
+  }
+
+  startDetailPanelDrag(event: MouseEvent, panelElement: HTMLElement): void {
+    if (event.button !== 0) {
+      return;
+    }
+
+    const targetElement = event.target as HTMLElement | null;
+    if (targetElement?.closest('.panel-close')) {
+      return;
+    }
+
+    const stageElement = this.graphStage?.nativeElement;
+    if (!stageElement) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const stageRect = stageElement.getBoundingClientRect();
+    const panelRect = panelElement.getBoundingClientRect();
+
+    this.panelDragState = {
+      offsetX: event.clientX - panelRect.left,
+      offsetY: event.clientY - panelRect.top,
+      panelWidth: panelRect.width,
+      panelHeight: panelRect.height,
+    };
+
+    const initialLeft = panelRect.left - stageRect.left;
+    const initialTop = panelRect.top - stageRect.top;
+    this.detailPanelPosition.set({ left: initialLeft, top: initialTop });
+
+    window.addEventListener('mousemove', this.onPanelDragMove);
+    window.addEventListener('mouseup', this.onPanelDragEnd);
+  }
+
+  private handlePanelDragMove(event: MouseEvent): void {
+    const dragState = this.panelDragState;
+    const stageElement = this.graphStage?.nativeElement;
+    if (!dragState || !stageElement) {
+      return;
+    }
+
+    const stageRect = stageElement.getBoundingClientRect();
+    const padding = 8;
+
+    const rawLeft = event.clientX - stageRect.left - dragState.offsetX;
+    const rawTop = event.clientY - stageRect.top - dragState.offsetY;
+
+    const maxLeft = Math.max(padding, stageRect.width - dragState.panelWidth - padding);
+    const maxTop = Math.max(padding, stageRect.height - dragState.panelHeight - padding);
+
+    const left = this.clamp(rawLeft, padding, maxLeft);
+    const top = this.clamp(rawTop, padding, maxTop);
+    this.detailPanelPosition.set({ left, top });
+  }
+
+  private endDetailPanelDrag(): void {
+    this.panelDragState = null;
+    window.removeEventListener('mousemove', this.onPanelDragMove);
+    window.removeEventListener('mouseup', this.onPanelDragEnd);
+  }
+
+  processProgram(options?: { preserveSelection?: boolean }): void {
     this.parseErrors.set([]);
     this.backendError.set('');
+    const previousSelected = options?.preserveSelection ? this.selectedNode() : null;
     this.selectedNode.set(null);
 
     const parsed = this.parseProgram(this.programText);
@@ -185,6 +292,8 @@ export class App implements AfterViewInit, OnDestroy {
       this.graphResponse.set(null);
       return;
     }
+
+    const parsedWithSelections = this.applyIntervalSelections(parsed);
 
     this.synchronizeOperationRows(parsed.attributeCount, parsed.attributeKinds);
 
@@ -194,8 +303,8 @@ export class App implements AfterViewInit, OnDestroy {
     }
 
     const requestPayload: GraphRequest = {
-      facts: parsed.facts,
-      rules: parsed.rules,
+      facts: parsedWithSelections.facts,
+      rules: parsedWithSelections.rules,
       operations: {
         labels: this.operationRows.map((row) => ({
           labelName: row.labelName.trim(),
@@ -215,11 +324,20 @@ export class App implements AfterViewInit, OnDestroy {
         next: (response) => {
           if (!Array.isArray(response.nodes) || !Array.isArray(response.edges)) {
             this.graphResponse.set(null);
-            this.backendError.set('Backend returned invalid JSON: arrays `nodes` and `edges` were expected.');
+            this.backendError.set(
+              'Backend returned invalid JSON: arrays `nodes` and `edges` were expected.',
+            );
             return;
           }
 
           this.graphResponse.set(response);
+
+          if (previousSelected) {
+            const restoredSelection = this.findMatchingNode(response.nodes, previousSelected);
+            if (restoredSelection) {
+              this.selectedNode.set(restoredSelection);
+            }
+          }
 
           setTimeout(() => {
             try {
@@ -293,7 +411,9 @@ export class App implements AfterViewInit, OnDestroy {
     }
   }
 
-  private inferAttributeConfig(text: string): Pick<ParsedProgram, 'attributeCount' | 'attributeKinds'> | null {
+  private inferAttributeConfig(
+    text: string,
+  ): Pick<ParsedProgram, 'attributeCount' | 'attributeKinds'> | null {
     const attributesByLine: string[][] = [];
     const lines = text.split(/\r?\n/);
 
@@ -308,10 +428,15 @@ export class App implements AfterViewInit, OnDestroy {
         return;
       }
 
-      const attributes = labelMatch[1]
-        .split(',')
-        .map((value) => value.trim())
-        .filter((value) => value.length > 0);
+      const tokens = this.splitAttributesFromLabelBlock(labelMatch[1]);
+      if (!tokens) {
+        return;
+      }
+
+      const attributes = tokens
+        .map((value) => this.parseAttributeToken(value))
+        .filter((token): token is ParsedAttributeToken => token !== null)
+        .map((token) => token.value);
 
       if (attributes.length === 0) {
         return;
@@ -329,7 +454,9 @@ export class App implements AfterViewInit, OnDestroy {
       return null;
     }
 
-    const hasInconsistentArity = attributesByLine.some((attributes) => attributes.length !== attributeCount);
+    const hasInconsistentArity = attributesByLine.some(
+      (attributes) => attributes.length !== attributeCount,
+    );
     if (hasInconsistentArity) {
       return null;
     }
@@ -342,7 +469,7 @@ export class App implements AfterViewInit, OnDestroy {
 
       attributesByLine.forEach((attributes) => {
         const value = attributes[attrIndex];
-        if (this.isNumeric(value)) {
+        if (this.isNumericLike(value)) {
           sawNumeric = true;
           return;
         }
@@ -389,7 +516,9 @@ export class App implements AfterViewInit, OnDestroy {
       } else {
         const duplicateKey = normalizedLabelName.toLowerCase();
         if (seenLabelNames.has(duplicateKey)) {
-          errors.push(`Attribute ${index + 1}: label name \"${normalizedLabelName}\" is duplicated.`);
+          errors.push(
+            `Attribute ${index + 1}: label name \"${normalizedLabelName}\" is duplicated.`,
+          );
         }
         seenLabelNames.add(duplicateKey);
       }
@@ -429,15 +558,20 @@ export class App implements AfterViewInit, OnDestroy {
 
       const factMatch = line.match(factPattern);
       if (factMatch) {
-        const attributes = this.parseAttributes(factMatch[3], index + 1, errors);
-        if (!attributes) {
+        const parsedAttributes = this.parseAttributes(factMatch[3], index + 1, errors);
+        if (!parsedAttributes) {
           return;
         }
+
+        const attributes = parsedAttributes.map((item) => item.value);
+        const attributeIntervals = parsedAttributes.map((item) => item.interval);
 
         facts.push({
           name: factMatch[1],
           argument: factMatch[2].trim(),
           attributes,
+          attributeIntervals,
+          sourceKey: this.buildFactSourceKey(factMatch[1], factMatch[2].trim()),
         });
         return;
       }
@@ -460,15 +594,20 @@ export class App implements AfterViewInit, OnDestroy {
           errors.push(`Line ${index + 1}: invalid literal in rule body -> ${piece}`);
         });
 
-        const attributes = this.parseAttributes(ruleMatch[3], index + 1, errors);
-        if (!attributes || bodyLiterals.length === 0) {
+        const parsedAttributes = this.parseAttributes(ruleMatch[3], index + 1, errors);
+        if (!parsedAttributes || bodyLiterals.length === 0) {
           return;
         }
+
+        const attributes = parsedAttributes.map((item) => item.value);
+        const attributeIntervals = parsedAttributes.map((item) => item.interval);
 
         rules.push({
           headName: ruleMatch[1],
           bodyLiterals,
           attributes,
+          attributeIntervals,
+          sourceKey: this.buildRuleSourceKey(index + 1),
         });
         return;
       }
@@ -476,7 +615,10 @@ export class App implements AfterViewInit, OnDestroy {
       errors.push(`Line ${index + 1}: does not match fact or rule format.`);
     });
 
-    const allAttributes = [...facts.map((item) => item.attributes), ...rules.map((item) => item.attributes)];
+    const allAttributes = [
+      ...facts.map((item) => item.attributes),
+      ...rules.map((item) => item.attributes),
+    ];
 
     if (allAttributes.length === 0) {
       errors.push('You must provide at least one fact or rule with labels.');
@@ -492,7 +634,10 @@ export class App implements AfterViewInit, OnDestroy {
       }
     });
 
-    const kinds: (AttributeKind | 'mixed')[] = Array.from({ length: attributeCount }, () => 'numeric');
+    const kinds: (AttributeKind | 'mixed')[] = Array.from(
+      { length: attributeCount },
+      () => 'numeric',
+    );
 
     for (let attrIndex = 0; attrIndex < attributeCount; attrIndex += 1) {
       let sawNumeric = false;
@@ -500,7 +645,7 @@ export class App implements AfterViewInit, OnDestroy {
 
       allAttributes.forEach((attributes) => {
         const value = attributes[attrIndex];
-        if (this.isNumeric(value)) {
+        if (this.isNumericLike(value)) {
           sawNumeric = true;
         } else {
           sawText = true;
@@ -531,23 +676,235 @@ export class App implements AfterViewInit, OnDestroy {
     };
   }
 
-  private parseAttributes(rawAttributes: string, lineNumber: number, errors: string[]): string[] | null {
-    const attributes = rawAttributes
-      .split(',')
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0);
+  private parseAttributes(
+    rawAttributes: string,
+    lineNumber: number,
+    errors: string[],
+  ): ParsedAttributeToken[] | null {
+    const rawParts = this.splitAttributesFromLabelBlock(rawAttributes);
+    if (!rawParts) {
+      errors.push(
+        `Line ${lineNumber}: invalid label separators. Use semicolons between attributes and commas only inside intervals [min, max].`,
+      );
+      return null;
+    }
 
-    if (attributes.length === 0) {
+    const tokens = rawParts
+      .map((part) => this.parseAttributeToken(part))
+      .filter((token): token is ParsedAttributeToken => token !== null);
+
+    if (tokens.length === 0) {
       errors.push(`Line ${lineNumber}: label block cannot be empty.`);
       return null;
     }
 
-    return attributes;
+    if (tokens.length !== rawParts.length) {
+      errors.push(`Line ${lineNumber}: malformed attribute in label block.`);
+      return null;
+    }
+
+    return tokens;
   }
 
-  private isNumeric(value: string): boolean {
+  private splitAttributesFromLabelBlock(rawAttributes: string): string[] | null {
+    const parts: string[] = [];
+    let current = '';
+    let bracketDepth = 0;
+
+    for (let index = 0; index < rawAttributes.length; index += 1) {
+      const char = rawAttributes[index];
+
+      if (char === '[') {
+        bracketDepth += 1;
+        current += char;
+        continue;
+      }
+
+      if (char === ']') {
+        if (bracketDepth === 0) {
+          return null;
+        }
+
+        bracketDepth -= 1;
+        current += char;
+        continue;
+      }
+
+      if (char === ';' && bracketDepth === 0) {
+        const trimmed = current.trim();
+        if (!trimmed) {
+          return null;
+        }
+
+        parts.push(trimmed);
+        current = '';
+        continue;
+      }
+
+      if (char === ',' && bracketDepth === 0) {
+        return null;
+      }
+
+      current += char;
+    }
+
+    if (bracketDepth !== 0) {
+      return null;
+    }
+
+    const tail = current.trim();
+    if (!tail) {
+      return parts.length > 0 ? null : [];
+    }
+
+    parts.push(tail);
+    return parts;
+  }
+
+  private parseAttributeToken(rawToken: string): ParsedAttributeToken | null {
+    const token = rawToken.trim();
+    if (!token) {
+      return null;
+    }
+
+    const intervalMatch = token.match(
+      /^\[\s*([+-]?(?:\d+(?:\.\d+)?|\.\d+))\s*,\s*([+-]?(?:\d+(?:\.\d+)?|\.\d+))\s*\]$/,
+    );
+    if (intervalMatch) {
+      const first = Number(intervalMatch[1]);
+      const second = Number(intervalMatch[2]);
+      if (!Number.isFinite(first) || !Number.isFinite(second)) {
+        return null;
+      }
+
+      const min = Math.min(first, second);
+      const max = Math.max(first, second);
+      return {
+        value: this.normalizeNumeric(min),
+        interval: [min, max],
+      };
+    }
+
+    return {
+      value: token,
+      interval: null,
+    };
+  }
+
+  private normalizeNumeric(value: number): string {
+    const compact = value.toString();
+    return compact === '-0' ? '0' : compact;
+  }
+
+  private isNumericLike(value: string): boolean {
     const asNumber = Number(value);
     return Number.isFinite(asNumber);
+  }
+
+  private buildFactSourceKey(name: string, argument: string): string {
+    return `FACT|${name}|${argument}`;
+  }
+
+  private buildRuleSourceKey(lineNumber: number): string {
+    return `RULE|line:${lineNumber}`;
+  }
+
+  private applyIntervalSelections(parsed: ParsedProgram): ParsedProgram {
+    const applySelections = <T extends FactInput | RuleInput>(items: T[]): T[] => {
+      return items.map((item) => {
+        const nextAttributes = [...item.attributes];
+
+        item.attributeIntervals.forEach((bounds, index) => {
+          if (!bounds) {
+            return;
+          }
+
+          const selectionKey = this.buildIntervalSelectionKey(item.sourceKey, index);
+          const selected = this.intervalSelections.get(selectionKey);
+          if (selected === undefined) {
+            return;
+          }
+
+          const clamped = this.clamp(selected, bounds[0], bounds[1]);
+          nextAttributes[index] = this.normalizeNumeric(clamped);
+        });
+
+        return {
+          ...item,
+          attributes: nextAttributes,
+        };
+      });
+    };
+
+    return {
+      ...parsed,
+      facts: applySelections(parsed.facts),
+      rules: applySelections(parsed.rules),
+    };
+  }
+
+  private buildIntervalSelectionKey(sourceKey: string, attributeIndex: number): string {
+    return `${sourceKey}|${attributeIndex}`;
+  }
+
+  private clamp(value: number, min: number, max: number): number {
+    if (value < min) {
+      return min;
+    }
+    if (value > max) {
+      return max;
+    }
+    return value;
+  }
+
+  onNodeIntervalInput(row: NodeLabelDetailRow, rawValue: string): void {
+    const node = this.selectedNode();
+    if (!node || !row.intervalBounds || !node.sourceKey) {
+      return;
+    }
+
+    const parsedValue = Number(rawValue);
+    if (!Number.isFinite(parsedValue)) {
+      return;
+    }
+
+    const clamped = this.clamp(parsedValue, row.intervalBounds[0], row.intervalBounds[1]);
+    const selectionKey = this.buildIntervalSelectionKey(node.sourceKey, row.attributeIndex);
+    this.intervalPreviewSelections.set(selectionKey, clamped);
+  }
+
+  onNodeIntervalCommit(row: NodeLabelDetailRow, rawValue: string): void {
+    const node = this.selectedNode();
+    if (!node || !row.intervalBounds || !node.sourceKey) {
+      return;
+    }
+
+    const parsedValue = Number(rawValue);
+    if (!Number.isFinite(parsedValue)) {
+      return;
+    }
+
+    const clamped = this.clamp(parsedValue, row.intervalBounds[0], row.intervalBounds[1]);
+    const selectionKey = this.buildIntervalSelectionKey(node.sourceKey, row.attributeIndex);
+    this.intervalPreviewSelections.delete(selectionKey);
+    this.intervalSelections.set(selectionKey, clamped);
+    this.processProgram({ preserveSelection: true });
+  }
+
+  private findMatchingNode(nodes: GraphNode[], selectedNode: GraphNode): GraphNode | null {
+    if (selectedNode.sourceKey) {
+      const bySourceKey = nodes.find(
+        (node) => node.type === selectedNode.type && node.sourceKey === selectedNode.sourceKey,
+      );
+      if (bySourceKey) {
+        return bySourceKey;
+      }
+    }
+
+    const byLabel = nodes.find(
+      (node) => node.type === selectedNode.type && node.label === selectedNode.label,
+    );
+    return byLabel ?? null;
   }
 
   private buildBackendErrorMessage(error: { error?: unknown; message?: string }): string {
@@ -805,7 +1162,10 @@ export class App implements AfterViewInit, OnDestroy {
     });
 
     supportByTarget.forEach((targetSupportEdges, targetId) => {
-      if (hiddenAggregationNodes.has(targetId) && supportTargetsHandledByAggregation.has(targetId)) {
+      if (
+        hiddenAggregationNodes.has(targetId) &&
+        supportTargetsHandledByAggregation.has(targetId)
+      ) {
         return;
       }
 
@@ -840,7 +1200,11 @@ export class App implements AfterViewInit, OnDestroy {
     const visibleConflictEdges = conflictEdges.filter(
       (edge) => !hiddenAggregationNodes.has(edge.from) && !hiddenAggregationNodes.has(edge.to),
     );
-    const collapsedVisual = this.collapseDuplicateFactVisualNodes(nodes, finalEdges, visibleConflictEdges);
+    const collapsedVisual = this.collapseDuplicateFactVisualNodes(
+      nodes,
+      finalEdges,
+      visibleConflictEdges,
+    );
     const collapsedNodes = collapsedVisual.nodes;
     const collapsedSupportEdges = [...collapsedVisual.supportEdges];
     const collapsedConflictEdges = collapsedVisual.conflictEdges;
@@ -1003,7 +1367,11 @@ export class App implements AfterViewInit, OnDestroy {
 
   private buildNodeImage(node: GraphNode): string {
     const labelLines = this.buildLabelLines(node.label);
-    const columnCount = Math.max(node.attributes?.length ?? 0, node.deltaAttributes?.length ?? 0, 1);
+    const columnCount = Math.max(
+      node.attributes?.length ?? 0,
+      node.deltaAttributes?.length ?? 0,
+      1,
+    );
     const width = this.estimateNodeWidth(node);
     const topHeight = 22 + labelLines.length * 20;
     const attrHeight = 52;
@@ -1060,7 +1428,11 @@ export class App implements AfterViewInit, OnDestroy {
     const labelLines = this.buildLabelLines(node.label);
     const longestLabel = labelLines.reduce((max, line) => Math.max(max, line.length), 0);
     const labelWidth = Math.max(120, longestLabel * 8 + 28);
-    const columnCount = Math.max(node.attributes?.length ?? 0, node.deltaAttributes?.length ?? 0, 1);
+    const columnCount = Math.max(
+      node.attributes?.length ?? 0,
+      node.deltaAttributes?.length ?? 0,
+      1,
+    );
     const attrsWidth = Math.max(120, columnCount * 52);
     return Math.max(labelWidth, attrsWidth);
   }
@@ -1076,7 +1448,10 @@ export class App implements AfterViewInit, OnDestroy {
       return ['-'];
     }
 
-    const preferredBreak = normalized.includes('(') && !normalized.includes(':-') ? normalized.replace('(', '\n(') : normalized;
+    const preferredBreak =
+      normalized.includes('(') && !normalized.includes(':-')
+        ? normalized.replace('(', '\n(')
+        : normalized;
     const roughLines = preferredBreak.split('\n');
     const wrapped: string[] = [];
 
@@ -1117,8 +1492,14 @@ export class App implements AfterViewInit, OnDestroy {
     return output;
   }
 
-  private normalizeAttributeValues(values: string[] | undefined, targetLength: number, maxDecimals: number): string[] {
-    const normalized = values ? values.map((value) => this.formatValueWithPrecision(value, maxDecimals)) : [];
+  private normalizeAttributeValues(
+    values: string[] | undefined,
+    targetLength: number,
+    maxDecimals: number,
+  ): string[] {
+    const normalized = values
+      ? values.map((value) => this.formatValueWithPrecision(value, maxDecimals))
+      : [];
     while (normalized.length < targetLength) {
       normalized.push('-');
     }
@@ -1139,15 +1520,133 @@ export class App implements AfterViewInit, OnDestroy {
     const rows: NodeLabelDetailRow[] = [];
     for (let index = 0; index < size; index += 1) {
       const labelName = this.operationRows[index]?.labelName?.trim() || `label_${index + 1}`;
+      const intervalBounds = this.readIntervalBounds(node, index);
+      const sliderValue = this.readSliderValue(node, index, intervalBounds);
+      const muValue = sliderValue !== null ? this.normalizeNumeric(sliderValue) : node.attributes?.[index];
       rows.push({
         labelName,
         color: this.detailBarPalette[index % this.detailBarPalette.length],
-        mu: this.buildDetailCell(node.attributes?.[index]),
+        attributeIndex: index,
+        mu: this.buildDetailCell(muValue),
         delta: this.buildDetailCell(node.deltaAttributes?.[index]),
+        intervalBounds,
+        sliderValue,
       });
     }
 
     return rows;
+  }
+
+  private readIntervalBounds(node: GraphNode, index: number): readonly [number, number] | null {
+    const candidate = node.attributeIntervals?.[index];
+    if (!candidate || candidate.length < 2) {
+      return null;
+    }
+
+    const min = Number(candidate[0]);
+    const max = Number(candidate[1]);
+    if (!Number.isFinite(min) || !Number.isFinite(max)) {
+      return null;
+    }
+
+    return min <= max ? [min, max] : [max, min];
+  }
+
+  private readSliderValue(
+    node: GraphNode,
+    index: number,
+    intervalBounds: readonly [number, number] | null,
+  ): number | null {
+    if (!intervalBounds) {
+      return null;
+    }
+
+    const selectionKey = node.sourceKey
+      ? this.buildIntervalSelectionKey(node.sourceKey, index)
+      : null;
+
+    if (selectionKey) {
+      const preview = this.intervalPreviewSelections.get(selectionKey);
+      if (preview !== undefined) {
+        return this.clamp(preview, intervalBounds[0], intervalBounds[1]);
+      }
+
+      const selected = this.intervalSelections.get(selectionKey);
+      if (selected !== undefined) {
+        return this.clamp(selected, intervalBounds[0], intervalBounds[1]);
+      }
+    }
+
+    const current = Number(node.attributes?.[index]);
+    if (!Number.isFinite(current)) {
+      return intervalBounds[0];
+    }
+
+    return this.clamp(current, intervalBounds[0], intervalBounds[1]);
+  }
+
+  getEditableZoneStartPercent(bounds: readonly [number, number] | null): number {
+    if (!bounds) {
+      return 0;
+    }
+
+    return this.clamp(bounds[0], 0, 1) * 100;
+  }
+
+  getEditableZoneWidthPercent(bounds: readonly [number, number] | null): number {
+    if (!bounds) {
+      return 100;
+    }
+
+    const min = this.clamp(bounds[0], 0, 1);
+    const max = this.clamp(bounds[1], 0, 1);
+    if (max <= min) {
+      return 0;
+    }
+
+    return (max - min) * 100;
+  }
+
+  getEditableZoneEndPercent(bounds: readonly [number, number] | null): number {
+    if (!bounds) {
+      return 100;
+    }
+
+    return this.clamp(bounds[1], 0, 1) * 100;
+  }
+
+  getEditableFillWidthPercent(
+    bounds: readonly [number, number] | null,
+    sliderValue: number | null,
+  ): number {
+    if (!bounds || sliderValue === null) {
+      return 0;
+    }
+
+    const start = this.getEditableZoneStartPercent(bounds);
+    const sliderPercent = this.clamp(sliderValue, 0, 1) * 100;
+    if (sliderPercent <= start) {
+      return 0;
+    }
+
+    return sliderPercent - start;
+  }
+
+  getIntervalSliderStep(bounds: readonly [number, number] | null): string {
+    if (!bounds) {
+      return '0.01';
+    }
+
+    const range = Math.abs(bounds[1] - bounds[0]);
+    if (range <= 0.1) {
+      return '0.001';
+    }
+
+    if (range <= 1) {
+      return '0.01';
+    }
+
+    return '0.1';
   }
 
   private formatValueWithPrecision(rawValue: string, maxDecimals: number): string {

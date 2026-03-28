@@ -18,6 +18,10 @@ public abstract class KnowledgePiece {
     protected String[] attributes;
     /** Current label values after applying the label algebra. */
     protected String[] deltaAttributes;
+    /** Optional interval bounds for attributes (for interactive numeric labels). */
+    protected Double[][] attributeIntervals;
+    /** Optional stable source key propagated from input parsing. */
+    protected String sourceKey;
 
     /**
      * Returns the original attributes associated to this piece of knowledge.
@@ -35,6 +39,24 @@ public abstract class KnowledgePiece {
      */
     public String[] getDeltaAttributes() {
         return deltaAttributes;
+    }
+
+    /**
+     * Returns optional interval bounds aligned with attributes.
+     *
+     * @return interval matrix where each row is [min, max], or null entries for non-interval attributes
+     */
+    public Double[][] getAttributeIntervals() {
+        return attributeIntervals;
+    }
+
+    /**
+     * Returns optional stable source key.
+     *
+     * @return source key, or null
+     */
+    public String getSourceKey() {
+        return sourceKey;
     }
     
     /**
@@ -62,6 +84,24 @@ public abstract class KnowledgePiece {
      */
     public void setDeltaAttributes(String[] deltaAttributes) {
         this.deltaAttributes = deltaAttributes;
+    }
+
+    /**
+     * Sets optional interval bounds for attributes.
+     *
+     * @param attributeIntervals interval matrix aligned with attributes
+     */
+    public void setAttributeIntervals(Double[][] attributeIntervals) {
+        this.attributeIntervals = attributeIntervals;
+    }
+
+    /**
+     * Sets optional stable source key.
+     *
+     * @param sourceKey source key
+     */
+    public void setSourceKey(String sourceKey) {
+        this.sourceKey = sourceKey;
     }
 
     /**

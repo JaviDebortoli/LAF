@@ -2,8 +2,8 @@
   <header class="page-header">
     <h1>Labeled Argumentation Frameworks (LAF)</h1>
     <p>
-      A formalism that models arguments, their relationships, and associated labels to evaluate how conclusions
-      are supported, combined, and resolved in the presence of conflict.
+      A formalism that models arguments, their relationships, and associated labels to evaluate how
+      conclusions are supported, combined, and resolved in the presence of conflict.
     </p>
   </header>
 
@@ -15,7 +15,9 @@
       </div>
     </div>
 
-    <p class="hint">Enter facts and rules with their associated labels.</p>
+    <p class="hint">
+      Enter facts and rules with labels separated by semicolons. Intervals use [min, max].
+    </p>
 
     <textarea
       [(ngModel)]="programText"
@@ -138,14 +140,26 @@
         <span>Edges: {{ graph.edges.length }}</span>
       </div>
 
-      <div class="graph-layout">
-        <div #graphCanvas class="graph-canvas" aria-label="Argumentative graph"></div>
+      <div #graphStage class="graph-stage">
+        <div class="graph-layout">
+          <div #graphCanvas class="graph-canvas" aria-label="Argumentative graph"></div>
+        </div>
 
-        <aside class="node-detail">
-          <h3>Selected node details</h3>
-          @if (!selectedNode()) {
-            <p class="hint">Click a node to inspect its details.</p>
-          } @else {
+        @if (selectedNode()) {
+          <aside
+            #detailPanel
+            class="node-detail-float"
+            [class.is-dragged]="detailPanelPosition() !== null"
+            [style.left.px]="detailPanelPosition()?.left"
+            [style.top.px]="detailPanelPosition()?.top"
+            role="dialog"
+            aria-label="Selected node details"
+          >
+            <div class="node-detail-head" (mousedown)="startDetailPanelDrag($event, detailPanel)">
+              <h3>Selected node details</h3>
+              <button type="button" class="panel-close" (click)="closeSelectedNodeDetails()">Close</button>
+            </div>
+
             <p><strong>Label:</strong> {{ selectedNode()?.label }}</p>
             <p><strong>Type:</strong> {{ selectedNode()?.type }}</p>
 
@@ -173,12 +187,60 @@
                       <td>
                         <div class="value-cell">
                           @if (row.mu.percentage !== null) {
-                            <div class="value-track" aria-hidden="true">
-                              <div
-                                class="value-fill"
-                                [style.background-color]="row.color"
-                                [style.width.%]="row.mu.percentage"
-                              ></div>
+                            <div class="value-track-overlay">
+                              <div class="value-track" aria-hidden="true">
+                                @if (row.intervalBounds) {
+                                  <div class="value-track-base"></div>
+                                  <div
+                                    class="value-editable-fill"
+                                    [style.left.%]="getEditableZoneStartPercent(row.intervalBounds)"
+                                    [style.width.%]="getEditableFillWidthPercent(row.intervalBounds, row.sliderValue)"
+                                    [style.background-color]="row.color"
+                                  ></div>
+                                  <div
+                                    class="value-blocked value-blocked-left"
+                                    [style.width.%]="getEditableZoneStartPercent(row.intervalBounds)"
+                                    [style.background-color]="row.color"
+                                  ></div>
+                                  <div
+                                    class="value-blocked value-blocked-right"
+                                    [style.width.%]="100 - getEditableZoneEndPercent(row.intervalBounds)"
+                                    [style.background-color]="row.color"
+                                  ></div>
+                                  <div
+                                    class="value-editable-zone"
+                                    [style.left.%]="getEditableZoneStartPercent(row.intervalBounds)"
+                                    [style.width.%]="getEditableZoneWidthPercent(row.intervalBounds)"
+                                  ></div>
+                                } @else {
+                                  <div
+                                    class="value-fill"
+                                    [style.background-color]="row.color"
+                                    [style.width.%]="row.mu.percentage"
+                                  ></div>
+                                }
+                              </div>
+
+                              @if (row.intervalBounds && row.sliderValue !== null) {
+                                <div
+                                  class="value-slider-lane"
+                                  [style.left.%]="getEditableZoneStartPercent(row.intervalBounds)"
+                                  [style.width.%]="getEditableZoneWidthPercent(row.intervalBounds)"
+                                >
+                                  <input
+                                    type="range"
+                                    class="value-track-slider"
+                                    [min]="row.intervalBounds[0]"
+                                    [max]="row.intervalBounds[1]"
+                                    [step]="getIntervalSliderStep(row.intervalBounds)"
+                                    [value]="row.sliderValue"
+                                    (input)="onNodeIntervalInput(row, $any($event.target).value)"
+                                    (change)="onNodeIntervalCommit(row, $any($event.target).value)"
+                                    [style.--slider-color]="row.color"
+                                    [attr.aria-label]="'Adjust ' + row.labelName"
+                                  />
+                                </div>
+                              }
                             </div>
                           }
                           <span class="value-text">{{ row.mu.displayValue }}</span>
@@ -203,10 +265,9 @@
                 </tbody>
               </table>
             }
-          }
-        </aside>
+          </aside>
+        }
       </div>
     }
-
   </section>
 </main>

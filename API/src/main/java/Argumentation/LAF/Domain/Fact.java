@@ -24,10 +24,25 @@ public class Fact extends KnowledgePiece{
      * @param attributes initial label values for this fact
      */
     public Fact(String name, String argument, String[] attributes) {
+        this(name, argument, attributes, null, null);
+    }
+
+    /**
+     * Creates a new fact with optional interval metadata and source key.
+     *
+     * @param name predicate name
+     * @param argument term used as argument of the predicate
+     * @param attributes initial label values for this fact
+     * @param attributeIntervals optional interval bounds for each label position
+     * @param sourceKey optional stable key from input parser
+     */
+    public Fact(String name, String argument, String[] attributes, Double[][] attributeIntervals, String sourceKey) {
         this.name = name;
         this.argument = argument;
         this.attributes = attributes;
         this.deltaAttributes = attributes; // At creation time, deltaAttributes coincide with the original ones
+        this.attributeIntervals = attributeIntervals;
+        this.sourceKey = sourceKey;
     }
 
     /**
