@@ -188,6 +188,10 @@ export class App implements AfterViewInit, OnDestroy {
   private readonly intervalPreviewSelections = new Map<string, number>();
 
   private cy: Core | null = null;
+  private initialGraphViewport: { zoom: number; pan: { x: number; y: number } } | null = null;
+  private minGraphZoom = 0.2;
+  private maxGraphZoom = 3;
+  private isClampingViewport = false;
   private panelDragState:
     | {
         offsetX: number;
@@ -213,7 +217,68 @@ export class App implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.cy?.destroy();
     this.cy = null;
+    this.initialGraphViewport = null;
     this.endDetailPanelDrag();
+  }
+
+  zoomInGraph(): void {
+    const cy = this.cy;
+    if (!cy) {
+      return;
+    }
+
+    const nextZoom = this.clamp(cy.zoom() * 1.18, this.minGraphZoom, this.maxGraphZoom);
+    cy.zoom({
+      level: nextZoom,
+      renderedPosition: {
+        x: cy.width() / 2,
+        y: cy.height() / 2,
+      },
+    });
+    this.clampGraphPanToViewport();
+  }
+
+  zoomOutGraph(): void {
+    const cy = this.cy;
+    if (!cy) {
+      return;
+    }
+
+    const nextZoom = this.clamp(cy.zoom() / 1.18, this.minGraphZoom, this.maxGraphZoom);
+    cy.zoom({
+      level: nextZoom,
+      renderedPosition: {
+        x: cy.width() / 2,
+        y: cy.height() / 2,
+      },
+    });
+    this.clampGraphPanToViewport();
+  }
+
+  fitGraphToContent(): void {
+    const cy = this.cy;
+    if (!cy) {
+      return;
+    }
+
+    cy.fit(cy.elements(), 30);
+    this.clampGraphPanToViewport();
+  }
+
+  resetGraphViewport(): void {
+    const cy = this.cy;
+    if (!cy) {
+      return;
+    }
+
+    if (!this.initialGraphViewport) {
+      this.fitGraphToContent();
+      return;
+    }
+
+    cy.zoom(this.initialGraphViewport.zoom);
+    cy.pan(this.initialGraphViewport.pan);
+    this.clampGraphPanToViewport();
   }
 
   loadExample(): void {
@@ -972,6 +1037,7 @@ export class App implements AfterViewInit, OnDestroy {
     }
 
     this.cy?.destroy();
+    this.initialGraphViewport = null;
 
     const visualGraph = this.buildVisualGraph(graph);
 
@@ -1002,6 +1068,8 @@ export class App implements AfterViewInit, OnDestroy {
     this.cy = cytoscape({
       container,
       elements,
+      minZoom: 0.05,
+      maxZoom: 4,
       style: [
         {
           selector: 'node[type = "FACT"], node[type = "RULE"]',
@@ -1101,6 +1169,8 @@ export class App implements AfterViewInit, OnDestroy {
       },
     });
 
+    this.initializeGraphViewport();
+
     this.cy.on('tap', 'node', (event) => {
       const tappedId = event.target.data('id') as string;
       const node = graph.nodes.find((item) => item.id === tappedId) ?? null;
@@ -1119,6 +1189,75 @@ export class App implements AfterViewInit, OnDestroy {
       this.cy?.nodes().removeClass('node-selected');
       this.selectedNode.set(null);
     });
+  }
+
+  private initializeGraphViewport(): void {
+    const cy = this.cy;
+    if (!cy) {
+      return;
+    }
+
+    cy.fit(cy.elements(), 30);
+
+    const fittedZoom = cy.zoom();
+    this.minGraphZoom = Math.max(0.05, fittedZoom * 0.9);
+    this.maxGraphZoom = Math.max(this.minGraphZoom + 0.1, fittedZoom * 4);
+    cy.minZoom(this.minGraphZoom);
+    cy.maxZoom(this.maxGraphZoom);
+
+    this.initialGraphViewport = {
+      zoom: fittedZoom,
+      pan: { ...cy.pan() },
+    };
+
+    cy.on('pan zoom resize', () => {
+      this.clampGraphPanToViewport();
+    });
+
+    this.clampGraphPanToViewport();
+  }
+
+  private clampGraphPanToViewport(): void {
+    const cy = this.cy;
+    if (!cy || this.isClampingViewport) {
+      return;
+    }
+
+    const elements = cy.elements();
+    if (elements.length === 0) {
+      return;
+    }
+
+    const bounds = elements.boundingBox();
+    const zoom = cy.zoom();
+    const pan = cy.pan();
+    const viewportWidth = cy.width();
+    const viewportHeight = cy.height();
+    const margin = 36;
+
+    const minPanX = viewportWidth - bounds.x2 * zoom - margin;
+    const maxPanX = margin - bounds.x1 * zoom;
+    const minPanY = viewportHeight - bounds.y2 * zoom - margin;
+    const maxPanY = margin - bounds.y1 * zoom;
+
+    const nextPanX = this.clampPanAxis(pan.x, minPanX, maxPanX);
+    const nextPanY = this.clampPanAxis(pan.y, minPanY, maxPanY);
+
+    if (nextPanX === pan.x && nextPanY === pan.y) {
+      return;
+    }
+
+    this.isClampingViewport = true;
+    cy.pan({ x: nextPanX, y: nextPanY });
+    this.isClampingViewport = false;
+  }
+
+  private clampPanAxis(current: number, min: number, max: number): number {
+    if (min > max) {
+      return (min + max) / 2;
+    }
+
+    return this.clamp(current, min, max);
   }
 
   private buildVisualGraph(graph: GraphResponse): { nodes: VisualNode[]; edges: VisualEdge[] } {
