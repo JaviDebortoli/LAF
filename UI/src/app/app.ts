@@ -114,6 +114,14 @@ interface OperationRow {
   conflictFunction: string;
 }
 
+interface FormalismTab {
+  id: string;
+  name: string;
+  shortName: string;
+  description: string;
+  enabled: boolean;
+}
+
 const EXAMPLE_PROGRAM = `basicServices(houseA). {0.75; [0.80, 0.95]}
 goodNeighbors(houseA). {0.75; 0.9}
 gangOperate(houseA). {0.5; [0.7, 1.0]}
@@ -140,6 +148,25 @@ export class App implements AfterViewInit, OnDestroy {
   programText = EXAMPLE_PROGRAM;
   operationRows: OperationRow[] = [];
   activeOperationTabIndex = 0;
+  activeFormalismId = 'laf';
+
+  readonly formalismTabs: FormalismTab[] = [
+    {
+      id: 'laf',
+      name: 'Label-Based Argumentation Framework',
+      shortName: 'LAF',
+      description:
+        'Evaluates argument strength with multi-attribute labels. It propagates values through support and aggregation, then weakens conflicting conclusions to produce a graded final assessment.',
+      enabled: true,
+    },
+    {
+      id: 'coming-soon-1',
+      name: 'Label-Based Argumentation Framework (Extended)',
+      shortName: 'LBAF',
+      description: 'Reserved slot for the next formalism to be implemented.',
+      enabled: false,
+    },
+  ];
 
   readonly parseErrors = signal<string[]>([]);
   readonly backendError = signal('');
@@ -213,6 +240,25 @@ export class App implements AfterViewInit, OnDestroy {
     }
 
     this.activeOperationTabIndex = index;
+  }
+
+  selectFormalism(tabId: string): void {
+    const selected = this.formalismTabs.find((tab) => tab.id === tabId);
+    if (!selected || !selected.enabled) {
+      return;
+    }
+
+    this.activeFormalismId = selected.id;
+  }
+
+  isFormalismActive(tabId: string): boolean {
+    return this.activeFormalismId === tabId;
+  }
+
+  getActiveFormalism(): FormalismTab {
+    return (
+      this.formalismTabs.find((tab) => tab.id === this.activeFormalismId) ?? this.formalismTabs[0]
+    );
   }
 
   closeSelectedNodeDetails(): void {

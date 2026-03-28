@@ -1,10 +1,27 @@
 <main class="page">
-  <header class="page-header">
-    <h1>Labeled Argumentation Frameworks (LAF)</h1>
-    <p>
-      A formalism that models arguments, their relationships, and associated labels to evaluate how
-      conclusions are supported, combined, and resolved in the presence of conflict.
-    </p>
+  <header class="app-header page-header">
+    <div class="app-header-top">
+      <div>
+        <h1 class="app-title">Argumentation Intelligence Studio</h1>
+        <p class="app-subtitle">A unified workspace for exploring and comparing argumentation formalisms.</p>
+      </div>
+    </div>
+
+    <nav class="formalism-tabs" aria-label="Formalismos disponibles">
+      @for (tab of formalismTabs; track tab.id) {
+        <button
+          type="button"
+          class="formalism-tab"
+          [class.active]="isFormalismActive(tab.id)"
+          [disabled]="!tab.enabled"
+          (click)="selectFormalism(tab.id)"
+        >
+          {{ tab.shortName }}
+        </button>
+      }
+    </nav>
+
+    <p class="page-header-text">{{ getActiveFormalism().description }}</p>
   </header>
 
   <section class="card">
@@ -270,4 +287,10 @@
       </div>
     }
   </section>
+
+  <footer class="app-footer">
+    <span>Argumentation Intelligence Studio</span>
+    <span>From premises to decisions through labeled reasoning</span>
+    <span>Current formalism: {{ getActiveFormalism().shortName }}</span>
+  </footer>
 </main>

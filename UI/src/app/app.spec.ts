@@ -24,11 +24,9 @@ buy(X) :- goodArea(X). {0.85}`;
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain(
-      'Labeled Argumentation Frameworks (LAF)',
-    );
+    expect(compiled.querySelector('h1')?.textContent).toContain('Argumentation Intelligence Studio');
     expect(compiled.querySelector('.page-header p')?.textContent).toContain(
-      'A formalism that models arguments',
+      'A unified workspace for exploring and comparing argumentation formalisms.',
     );
   });
 
