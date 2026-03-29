@@ -1,0 +1,61 @@
+package Argumentation.LAF.Controller;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
+
+@SpringBootTest
+class GraphProcessControllerTest {
+    private MockMvc mockMvc;
+
+    @Autowired
+    private WebApplicationContext webApplicationContext;
+
+    @BeforeEach
+    void setUp() {
+        this.mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
+    }
+
+    @Test
+    void shouldReturnServiceUnavailableWhenLlmIsNotConfigured() throws Exception {
+        var result = mockMvc.perform(post("/api/graph/process")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(buildRequestJson()))
+                .andExpect(status().isServiceUnavailable())
+                .andReturn();
+
+        assertEquals(
+                "Narrative generation service is temporarily unavailable.",
+                result.getResponse().getContentAsString());
+    }
+
+    private String buildRequestJson() {
+        return """
+                {
+                  "facts": [
+                    {"name":"basicServices","argument":"houseA","attributes":["0.75","0.95"],"sourceKey":"FACT|basicServices|houseA"},
+                    {"name":"gangOperate","argument":"houseA","attributes":["0.5","1.0"],"sourceKey":"FACT|gangOperate|houseA"}
+                  ],
+                  "rules": [
+                    {"headName":"goodArea","bodyLiterals":["basicServices"],"attributes":["0.85","0.95"],"sourceKey":"RULE|goodArea|basicServices"},
+                    {"headName":"~goodArea","bodyLiterals":["gangOperate"],"attributes":["0.5","0.8"],"sourceKey":"RULE|~goodArea|gangOperate"}
+                  ],
+                  "operations": {
+                    "labels": [
+                      {"labelName":"label_1","supportFunction":"X + Y","aggregationFunction":"X + Y","conflictFunction":"max(X-Y,0)"},
+                      {"labelName":"label_2","supportFunction":"X + Y","aggregationFunction":"X + Y","conflictFunction":"max(X-Y,0)"}
+                    ]
+                  }
+                }
+                """;
+    }
+}

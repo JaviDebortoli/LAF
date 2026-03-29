@@ -93,6 +93,48 @@ interface GraphResponse {
   edges: GraphEdge[];
 }
 
+interface FinalConclusionTrace {
+  literal: string;
+  mu: string[];
+  delta: string[];
+  acceptability: string;
+  acceptabilityReason: string;
+}
+
+interface DerivationTrace {
+  targetLiteral: string;
+  steps: string[];
+  edgeKinds: string[];
+}
+
+interface ConflictTrace {
+  leftLiteral: string;
+  rightLiteral: string;
+  leftDelta: string[];
+  rightDelta: string[];
+  winner: string;
+  winnerReason: string;
+}
+
+interface NarrativeTrace {
+  finalConclusions: FinalConclusionTrace[];
+  derivations: DerivationTrace[];
+  conflicts: ConflictTrace[];
+}
+
+interface ProcessMeta {
+  model: string;
+  promptVersion: string;
+  generatedAt: string;
+}
+
+interface GraphProcessResponse {
+  graph: GraphResponse;
+  narrative: string;
+  trace: NarrativeTrace;
+  meta: ProcessMeta;
+}
+
 interface ParsedProgram {
   facts: FactInput[];
   rules: RuleInput[];
@@ -143,7 +185,7 @@ export class App implements AfterViewInit, OnDestroy {
   @ViewChild('graphCanvas') graphCanvas?: ElementRef<HTMLDivElement>;
   @ViewChild('graphStage') graphStage?: ElementRef<HTMLDivElement>;
 
-  readonly backendUrl = '/api/graph';
+  readonly backendUrl = '/api/graph/process';
 
   programText = EXAMPLE_PROGRAM;
   operationRows: OperationRow[] = [];
@@ -173,6 +215,7 @@ export class App implements AfterViewInit, OnDestroy {
   readonly isLoading = signal(false);
 
   readonly graphResponse = signal<GraphResponse | null>(null);
+  readonly processNarrative = signal<GraphProcessResponse | null>(null);
   readonly selectedNode = signal<GraphNode | null>(null);
   readonly detailPanelPosition = signal<{ left: number; top: number } | null>(null);
 
@@ -287,6 +330,7 @@ export class App implements AfterViewInit, OnDestroy {
     this.intervalPreviewSelections.clear();
     this.resetOperationsByProgram();
     this.graphResponse.set(null);
+    this.processNarrative.set(null);
     this.selectedNode.set(null);
     this.backendError.set('');
   }
@@ -296,6 +340,7 @@ export class App implements AfterViewInit, OnDestroy {
     this.intervalSelections.clear();
     this.intervalPreviewSelections.clear();
     this.parseErrors.set([]);
+    this.processNarrative.set(null);
     this.synchronizeOperationsFromCurrentProgram();
   }
 
@@ -401,6 +446,7 @@ export class App implements AfterViewInit, OnDestroy {
     const parsed = this.parseProgram(this.programText);
     if (!parsed) {
       this.graphResponse.set(null);
+      this.processNarrative.set(null);
       return;
     }
 
@@ -410,6 +456,7 @@ export class App implements AfterViewInit, OnDestroy {
 
     if (!this.validateOperations(parsed.attributeCount)) {
       this.graphResponse.set(null);
+      this.processNarrative.set(null);
       return;
     }
 
@@ -429,22 +476,30 @@ export class App implements AfterViewInit, OnDestroy {
     this.isLoading.set(true);
 
     this.http
-      .post<GraphResponse>(this.backendUrl, requestPayload)
+      .post<GraphProcessResponse>(this.backendUrl, requestPayload)
       .pipe(finalize(() => this.isLoading.set(false)))
       .subscribe({
         next: (response) => {
-          if (!Array.isArray(response.nodes) || !Array.isArray(response.edges)) {
+          if (
+            !response ||
+            !response.graph ||
+            !Array.isArray(response.graph.nodes) ||
+            !Array.isArray(response.graph.edges) ||
+            typeof response.narrative !== 'string'
+          ) {
             this.graphResponse.set(null);
+            this.processNarrative.set(null);
             this.backendError.set(
-              'Backend returned invalid JSON: arrays `nodes` and `edges` were expected.',
+              'Backend returned invalid JSON: expected graph, narrative, trace, and meta fields.',
             );
             return;
           }
 
-          this.graphResponse.set(response);
+          this.graphResponse.set(response.graph);
+          this.processNarrative.set(response);
 
           if (previousSelected) {
-            const restoredSelection = this.findMatchingNode(response.nodes, previousSelected);
+            const restoredSelection = this.findMatchingNode(response.graph.nodes, previousSelected);
             if (restoredSelection) {
               this.selectedNode.set(restoredSelection);
             }
@@ -452,7 +507,7 @@ export class App implements AfterViewInit, OnDestroy {
 
           setTimeout(() => {
             try {
-              this.renderGraph(response);
+              this.renderGraph(response.graph);
             } catch (renderError) {
               this.backendError.set(
                 `Failed to render graph: ${renderError instanceof Error ? renderError.message : String(renderError)}`,
@@ -462,6 +517,7 @@ export class App implements AfterViewInit, OnDestroy {
         },
         error: (error: { error?: unknown; message?: string }) => {
           this.graphResponse.set(null);
+          this.processNarrative.set(null);
           this.cy?.destroy();
           this.cy = null;
           this.backendError.set(this.buildBackendErrorMessage(error));

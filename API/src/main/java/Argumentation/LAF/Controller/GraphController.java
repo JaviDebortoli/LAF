@@ -1,10 +1,13 @@
 package Argumentation.LAF.Controller;
 
 import Argumentation.LAF.DTO.Request.GraphRequest;
+import Argumentation.LAF.DTO.Response.GraphProcessResponse;
 import Argumentation.LAF.DTO.Response.GraphResponse;
 import Argumentation.LAF.Service.AlgebraMapperService;
 import Argumentation.LAF.Service.GraphBuilderService;
+import Argumentation.LAF.Service.GraphProcessService;
 import Argumentation.LAF.Service.InferenceService;
+import Argumentation.LAF.Service.NarrativeServiceUnavailableException;
 import Argumentation.LAF.Service.ProgramMapperService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,6 +34,7 @@ public class GraphController {
     private final AlgebraMapperService algebraMapperService;
     private final InferenceService inferenceService;
     private final GraphBuilderService graphBuilderService;
+    private final GraphProcessService graphProcessService;
     
     /**
      * Constructs a {@code GraphController} with all required stateless services.
@@ -43,11 +47,13 @@ public class GraphController {
     public GraphController(ProgramMapperService programMapperService,
                            AlgebraMapperService algebraMapperService,
                            InferenceService inferenceService,
-                           GraphBuilderService graphBuilderService) {
+                           GraphBuilderService graphBuilderService,
+                           GraphProcessService graphProcessService) {
         this.programMapperService = programMapperService;
         this.algebraMapperService = algebraMapperService;
         this.inferenceService = inferenceService;
         this.graphBuilderService = graphBuilderService;
+        this.graphProcessService = graphProcessService;
     }
     
     /**
@@ -75,5 +81,15 @@ public class GraphController {
         var response = graphBuilderService.toGraphResponse(argumentativeGraph);
 
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/graph/process")
+    public ResponseEntity<?> processGraphAndNarrative(@RequestBody GraphRequest request) {
+        try {
+            GraphProcessResponse response = graphProcessService.process(request);
+            return ResponseEntity.ok(response);
+        } catch (NarrativeServiceUnavailableException exception) {
+            return ResponseEntity.status(503).body(exception.getMessage());
+        }
     }
 }
