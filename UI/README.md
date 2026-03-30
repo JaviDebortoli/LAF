@@ -6,8 +6,9 @@ Permite a los usuarios:
 
 - Ingresar un programa de conocimiento LAF (hechos y reglas con labels).
 - Configurar operaciones por label (soporte, agregacion, conflicto).
-- Enviar solicitudes de inferencia a `POST /api/graph`.
+- Procesar experimento y narrativa via `POST /api/graph/process`.
 - Visualizar e inspeccionar el grafo argumentativo resultante.
+- Leer una narrativa en ingles con los hallazgos del experimento.
 
 ## Requisitos
 
@@ -50,7 +51,7 @@ En desarrollo, `proxy.conf.json` redirige `/api` hacia `http://localhost:8080`.
 2. Cargar o ingresar un programa en **Knowledge Program**.
 3. Configurar **Label Operations**.
 4. Hacer click en **Process**.
-5. Inspeccionar la estructura del grafo y el detalle de nodos seleccionados.
+5. Inspeccionar la estructura del grafo, el detalle de nodos seleccionados y la narrativa debajo del grafo.
 
 ## Scripts
 
@@ -62,4 +63,5 @@ En desarrollo, `proxy.conf.json` redirige `/api` hacia `http://localhost:8080`.
 
 - La UI usa Cytoscape para el renderizado del grafo.
 - El modelo visual incluye nodos esteticos inferenciales (`dMP`) y de conflicto (`CA`).
+- Si el servicio de narrativa no esta disponible, se muestra el mensaje del backend en el panel de error.
 - Este proyecto se alinea con el `README.md` raiz y con el contrato del backend.

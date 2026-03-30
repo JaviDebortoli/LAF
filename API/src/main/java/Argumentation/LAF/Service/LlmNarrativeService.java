@@ -31,6 +31,10 @@ public class LlmNarrativeService {
             - Do not invent literals, steps, conflicts, or winners.
             - Explain discoveries clearly and naturally.
             - Mention conflict outcomes explicitly when present.
+            - Respect the quantitative acceptability semantics from trace data:
+              * DEFEATED means all numeric delta labels are 0.0.
+              * ADMISSIBLE means at least one numeric delta label is greater than 0.0.
+            - Use these status labels exactly as written when referring to conclusion status.
             - Keep it focused on findings, not implementation details.
 
             Output must be strict JSON with a single key:

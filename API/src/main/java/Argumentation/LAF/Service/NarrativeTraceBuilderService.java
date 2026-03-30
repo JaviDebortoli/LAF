@@ -99,11 +99,16 @@ public class NarrativeTraceBuilderService {
             return new Acceptability("UNDETERMINED", "Delta labels are qualitative for this conclusion.");
         }
 
-        boolean accepted = numeric.stream().allMatch(v -> v >= 0.5);
-        if (accepted) {
-            return new Acceptability("ACCEPTED", "All numeric delta labels are >= 0.5.");
+        boolean allZero = numeric.stream().allMatch(v -> v == 0.0);
+        if (allZero) {
+            return new Acceptability(
+                    "DEFEATED",
+                    "All numeric delta labels are 0.0, so the conclusion is defeated by conflict outcome.");
         }
-        return new Acceptability("REJECTED", "At least one numeric delta label is < 0.5.");
+
+        return new Acceptability(
+                "ADMISSIBLE",
+                "At least one numeric delta label is greater than 0.0, so the conclusion remains admissible.");
     }
 
     private DerivationTraceResponse buildDerivation(

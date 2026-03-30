@@ -73,6 +73,22 @@ La salida conserva la estructura argumentativa para visualizacion:
 
 Para nodos originados en el programa, la respuesta incluye metadata de intervalos y claves de origen estables para habilitar control interactivo en la UI.
 
+## 6.1) Narrativa del experimento desde el grafo
+
+El sistema incluye un flujo de proceso completo (`/api/graph/process`) que, ademas de construir el grafo, genera una narrativa en ingles basada en:
+
+- conclusiones finales,
+- como se obtuvieron,
+- conflictos detectados,
+- y resultado (ganador) de cada conflicto.
+
+La narrativa se construye a partir de una traza estructurada derivada del grafo y luego se redacta con un LLM configurable por API key.
+
+Semantica cuantitativa usada en la traza:
+
+- **DEFEATED**: todos los `delta` numericos de la conclusion son `0.0`.
+- **ADMISSIBLE**: al menos un `delta` numerico de la conclusion es `> 0.0`.
+
 ## 7) Interaccion de intervalos en la UI
 
 La interfaz permite ajustar labels intervalares desde el detalle del nodo:

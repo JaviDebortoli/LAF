@@ -33,7 +33,7 @@ class NarrativeTraceBuilderServiceTest {
 
         assertEquals(1, trace.getFinalConclusions().size());
         assertEquals("buy(houseA)", trace.getFinalConclusions().get(0).getLiteral());
-        assertEquals("ACCEPTED", trace.getFinalConclusions().get(0).getAcceptability());
+        assertEquals("ADMISSIBLE", trace.getFinalConclusions().get(0).getAcceptability());
 
         assertEquals(1, trace.getDerivations().size());
         var derivation = trace.getDerivations().get(0);
@@ -62,6 +62,20 @@ class NarrativeTraceBuilderServiceTest {
         assertEquals("LEFT", conflict.getWinner());
         assertNotNull(conflict.getWinnerReason());
         assertFalse(conflict.getWinnerReason().isBlank());
+    }
+
+    @Test
+    void shouldMarkConclusionAsDefeatedWhenAllNumericDeltaAreZero() {
+        GraphResponse graph = new GraphResponse();
+        graph.setNodes(java.util.List.of(
+                node("F1", "~buy(houseA)", "FACT", new String[] {"0.5", "0.8"}, new String[] {"0.0", "0.0"})));
+        graph.setEdges(java.util.List.of());
+
+        var trace = service.build(graph);
+
+        assertEquals(1, trace.getFinalConclusions().size());
+        assertEquals("DEFEATED", trace.getFinalConclusions().get(0).getAcceptability());
+        assertTrue(trace.getFinalConclusions().get(0).getAcceptabilityReason().contains("0.0"));
     }
 
     private GraphNodeResponse node(String id, String label, String type, String[] mu, String[] delta) {
