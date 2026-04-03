@@ -7,7 +7,6 @@ import Argumentation.LAF.Service.AlgebraMapperService;
 import Argumentation.LAF.Service.GraphBuilderService;
 import Argumentation.LAF.Service.GraphProcessService;
 import Argumentation.LAF.Service.InferenceService;
-import Argumentation.LAF.Service.NarrativeServiceUnavailableException;
 import Argumentation.LAF.Service.ProgramMapperService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -84,12 +83,8 @@ public class GraphController {
     }
 
     @PostMapping("/graph/process")
-    public ResponseEntity<?> processGraphAndNarrative(@RequestBody GraphRequest request) {
-        try {
-            GraphProcessResponse response = graphProcessService.process(request);
-            return ResponseEntity.ok(response);
-        } catch (NarrativeServiceUnavailableException exception) {
-            return ResponseEntity.status(503).body(exception.getMessage());
-        }
+    public ResponseEntity<GraphProcessResponse> processGraphAndNarrative(@RequestBody GraphRequest request) {
+        GraphProcessResponse response = graphProcessService.process(request);
+        return ResponseEntity.ok(response);
     }
 }

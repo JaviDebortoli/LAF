@@ -1,7 +1,7 @@
 package Argumentation.LAF.Controller;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -27,15 +27,15 @@ class GraphProcessControllerTest {
 
     @Test
     void shouldReturnServiceUnavailableWhenLlmIsNotConfigured() throws Exception {
-        var result = mockMvc.perform(post("/api/graph/process")
+        mockMvc.perform(post("/api/graph/process")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(buildRequestJson()))
                 .andExpect(status().isServiceUnavailable())
-                .andReturn();
-
-        assertEquals(
-                "Narrative generation service is temporarily unavailable.",
-                result.getResponse().getContentAsString());
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.status").value(503))
+                .andExpect(jsonPath("$.error").value("Service Unavailable"))
+                .andExpect(jsonPath("$.message").value("Narrative generation service is temporarily unavailable."))
+                .andExpect(jsonPath("$.path").value("/api/graph/process"));
     }
 
     private String buildRequestJson() {
