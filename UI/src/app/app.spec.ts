@@ -71,6 +71,18 @@ buy(X) :- goodArea(X). {0.85}`;
     expect(textarea?.getAttribute('aria-describedby')).toBe('program-input-hint');
   });
 
+  it('should expose dedicated live regions for status and errors', async () => {
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const statusRegion = compiled.querySelector<HTMLElement>('p[role="status"][aria-live="polite"]');
+    const alertRegion = compiled.querySelector<HTMLElement>('p[role="alert"][aria-live="assertive"]');
+
+    expect(statusRegion).not.toBeNull();
+    expect(alertRegion).not.toBeNull();
+  });
+
   it('should render dynamic tabs based on detected labels', () => {
     const fixture = TestBed.createComponent(App);
     const app = fixture.componentInstance;
@@ -97,6 +109,95 @@ buy(X) :- goodArea(X). {0.85}`;
 
     expect(app.activeOperationTabIndex).toBe(1);
     expect(compiled.querySelector('.operation-tab.active')?.textContent).toContain('label_2');
+  });
+
+  it('should allow keyboard navigation between operation tabs', () => {
+    const fixture = TestBed.createComponent(App);
+    const app = fixture.componentInstance;
+
+    app.onProgramTextChange(THREE_LABELS_PROGRAM);
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const firstTab = compiled.querySelectorAll<HTMLButtonElement>('.operation-tab')[0];
+    firstTab.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
+    fixture.detectChanges();
+
+    expect(app.activeOperationTabIndex).toBe(1);
+  });
+
+  it('should expose graph controls and canvas relationships when graph is available', () => {
+    const fixture = TestBed.createComponent(App);
+    const app = fixture.componentInstance;
+
+    fixture.detectChanges();
+
+    app.graphResponse.set({
+      nodes: [
+        createNode({
+          id: 'N1',
+          label: 'buy(houseA)',
+          type: 'FACT',
+          attributes: ['1'],
+          deltaAttributes: ['1'],
+        }),
+      ],
+      edges: [],
+    });
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const toolbar = compiled.querySelector<HTMLElement>('.graph-controls[role="toolbar"]');
+    const canvas = compiled.querySelector<HTMLElement>('#graph-canvas');
+    const helpText = compiled.querySelector<HTMLElement>('#graph-canvas-help');
+
+    expect(toolbar?.getAttribute('aria-controls')).toBe('graph-canvas');
+    expect(canvas?.getAttribute('aria-describedby')).toBe('graph-canvas-help');
+    expect(helpText).not.toBeNull();
+  });
+
+  it('should support keyboard node selection on graph canvas', () => {
+    const fixture = TestBed.createComponent(App);
+    const app = fixture.componentInstance;
+
+    fixture.detectChanges();
+
+    app.graphResponse.set({
+      nodes: [
+        createNode({
+          id: 'N1',
+          label: 'buy(houseA)',
+          type: 'FACT',
+          attributes: ['1'],
+          deltaAttributes: ['1'],
+        }),
+        createNode({
+          id: 'N2',
+          label: '~buy(houseA)',
+          type: 'FACT',
+          attributes: ['1'],
+          deltaAttributes: ['0'],
+        }),
+      ],
+      edges: [],
+    });
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const canvas = compiled.querySelector<HTMLElement>('#graph-canvas');
+    expect(canvas).not.toBeNull();
+
+    canvas?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
+    fixture.detectChanges();
+    expect(app.selectedNode()?.id).toBe('N1');
+
+    canvas?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
+    fixture.detectChanges();
+    expect(app.selectedNode()?.id).toBe('N2');
+
+    canvas?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    fixture.detectChanges();
+    expect(app.selectedNode()).toBeNull();
   });
 
   it('should allow editing individual label names', () => {

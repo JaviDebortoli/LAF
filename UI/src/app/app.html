@@ -1,6 +1,13 @@
 <a class="skip-link" href="#main-content">Skip to main content</a>
 
 <main id="main-content" class="page" tabindex="-1">
+  <p class="visually-hidden" role="status" aria-live="polite" aria-atomic="true">
+    {{ liveStatusMessage() }}
+  </p>
+  <p class="visually-hidden" role="alert" aria-live="assertive" aria-atomic="true">
+    {{ liveErrorMessage() }}
+  </p>
+
   <header class="app-header page-header">
     <div class="app-header-top">
       <div>
@@ -74,6 +81,7 @@
             [attr.aria-controls]="'operation-panel-' + index"
             [id]="'operation-tab-' + index"
             (click)="setActiveOperationTab(index)"
+            (keydown)="onOperationTabKeydown($event, index)"
           >
             {{ row.labelName || 'label_' + (index + 1) }}
           </button>
@@ -133,7 +141,7 @@
     }
   </section>
 
-  <section class="card" aria-labelledby="run-inference-heading">
+  <section class="card" aria-labelledby="run-inference-heading" [attr.aria-busy]="isLoading()">
     <div class="card-header">
       <h2 id="run-inference-heading">3) Run Inference and Visualize Graph</h2>
       <div class="actions">
@@ -144,7 +152,7 @@
     </div>
 
     @if (parseErrors().length > 0) {
-      <div class="error-box">
+      <div class="error-box" role="alert" aria-atomic="true">
         <p>Validation errors:</p>
         <ul>
           @for (error of parseErrors(); track error) {
@@ -155,20 +163,25 @@
     }
 
     @if (backendError()) {
-      <div class="error-box">
+      <div class="error-box" role="alert" aria-atomic="true">
         <p>Backend error:</p>
         <pre>{{ backendError() }}</pre>
       </div>
     }
 
     @if (graphResponse(); as graph) {
-      <div class="graph-summary">
+      <div class="graph-summary" role="status" aria-live="polite" aria-atomic="true">
         <span>Nodes: {{ graph.nodes.length }}</span>
         <span>Edges: {{ graph.edges.length }}</span>
       </div>
 
       <div #graphStage class="graph-stage">
-        <div class="graph-controls" aria-label="Graph navigation controls">
+        <div
+          class="graph-controls"
+          role="toolbar"
+          aria-label="Graph navigation controls"
+          aria-controls="graph-canvas"
+        >
           <button type="button" class="graph-control-btn" (click)="zoomInGraph()">Zoom in</button>
           <button type="button" class="graph-control-btn" (click)="zoomOutGraph()">Zoom out</button>
           <button type="button" class="graph-control-btn" (click)="fitGraphToContent()">
@@ -180,12 +193,19 @@
         </div>
 
         <div class="graph-layout">
+          <p id="graph-canvas-help" class="visually-hidden">
+            Graph keyboard shortcuts: use arrow keys to move between nodes, Home and End to jump,
+            and Escape to clear the current selection.
+          </p>
           <div
             #graphCanvas
+            id="graph-canvas"
             class="graph-canvas"
             tabindex="0"
-            role="img"
+            role="region"
             aria-label="Argumentative graph canvas"
+            aria-describedby="graph-canvas-help"
+            (keydown)="onGraphCanvasKeydown($event)"
           ></div>
         </div>
 
@@ -197,14 +217,21 @@
             [style.left.px]="detailPanelPosition()?.left"
             [style.top.px]="detailPanelPosition()?.top"
             role="dialog"
-            aria-label="Selected node details"
+            aria-modal="false"
+            aria-labelledby="selected-node-heading"
+            aria-describedby="selected-node-description"
+            tabindex="-1"
           >
             <div class="node-detail-head" (mousedown)="startDetailPanelDrag($event, detailPanel)">
-              <h3>Selected node details</h3>
+              <h3 id="selected-node-heading">Selected node details</h3>
               <button type="button" class="panel-close" (click)="closeSelectedNodeDetails()">
                 Close
               </button>
             </div>
+
+            <p id="selected-node-description" class="visually-hidden">
+              This panel shows data for the currently selected node.
+            </p>
 
             <p><strong>Label:</strong> {{ selectedNode()?.label }}</p>
             <p><strong>Type:</strong> {{ selectedNode()?.type }}</p>
@@ -295,6 +322,7 @@
                                     (change)="onNodeIntervalCommit(row, $any($event.target).value)"
                                     [style.--slider-color]="row.color"
                                     [attr.aria-label]="'Adjust ' + row.labelName"
+                                    [attr.aria-valuetext]="row.mu.displayValue"
                                   />
                                 </div>
                               }

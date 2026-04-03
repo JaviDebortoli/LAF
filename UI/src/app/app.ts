@@ -200,6 +200,8 @@ export class App implements AfterViewInit, OnDestroy {
   readonly parseErrors = signal<string[]>([]);
   readonly backendError = signal('');
   readonly isLoading = signal(false);
+  readonly liveStatusMessage = signal('');
+  readonly liveErrorMessage = signal('');
 
   readonly graphResponse = signal<GraphResponse | null>(null);
   readonly processNarrative = signal<GraphProcessResponse | null>(null);
@@ -360,7 +362,87 @@ export class App implements AfterViewInit, OnDestroy {
   }
 
   closeSelectedNodeDetails(): void {
-    this.selectedNode.set(null);
+    this.setSelectedNode(null);
+  }
+
+  onOperationTabKeydown(event: KeyboardEvent, currentIndex: number): void {
+    if (this.operationRows.length === 0) {
+      return;
+    }
+
+    let nextIndex: number | null = null;
+    if (event.key === 'ArrowRight') {
+      nextIndex = currentIndex === this.operationRows.length - 1 ? 0 : currentIndex + 1;
+    } else if (event.key === 'ArrowLeft') {
+      nextIndex = currentIndex === 0 ? this.operationRows.length - 1 : currentIndex - 1;
+    } else if (event.key === 'Home') {
+      nextIndex = 0;
+    } else if (event.key === 'End') {
+      nextIndex = this.operationRows.length - 1;
+    }
+
+    if (nextIndex === null) {
+      return;
+    }
+
+    event.preventDefault();
+    this.setActiveOperationTab(nextIndex);
+    const targetTab = document.getElementById(`operation-tab-${nextIndex}`) as
+      | HTMLButtonElement
+      | null;
+    targetTab?.focus();
+  }
+
+  onGraphCanvasKeydown(event: KeyboardEvent): void {
+    const graph = this.graphResponse();
+    if (!graph || graph.nodes.length === 0) {
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.setSelectedNode(null);
+      return;
+    }
+
+    const selected = this.selectedNode();
+    const selectedIndex = selected ? graph.nodes.findIndex((node) => node.id === selected.id) : -1;
+
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      event.preventDefault();
+      const nextIndex = selectedIndex < 0 ? 0 : (selectedIndex + 1) % graph.nodes.length;
+      this.setSelectedNode(graph.nodes[nextIndex]);
+      return;
+    }
+
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const nextIndex =
+        selectedIndex < 0
+          ? graph.nodes.length - 1
+          : (selectedIndex - 1 + graph.nodes.length) % graph.nodes.length;
+      this.setSelectedNode(graph.nodes[nextIndex]);
+      return;
+    }
+
+    if (event.key === 'Home') {
+      event.preventDefault();
+      this.setSelectedNode(graph.nodes[0]);
+      return;
+    }
+
+    if (event.key === 'End') {
+      event.preventDefault();
+      this.setSelectedNode(graph.nodes[graph.nodes.length - 1]);
+      return;
+    }
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      if (!selected) {
+        this.setSelectedNode(graph.nodes[0]);
+      }
+    }
   }
 
   startDetailPanelDrag(event: MouseEvent, panelElement: HTMLElement): void {
@@ -429,7 +511,8 @@ export class App implements AfterViewInit, OnDestroy {
     this.parseErrors.set([]);
     this.backendError.set('');
     const previousSelected = options?.preserveSelection ? this.selectedNode() : null;
-    this.selectedNode.set(null);
+    this.setSelectedNode(null, { announce: false });
+    this.announceStatus('Processing graph.');
 
     const parsedResult = this.lafProgramService.parseProgram(this.programText);
     this.parseErrors.set(parsedResult.errors);
@@ -437,6 +520,7 @@ export class App implements AfterViewInit, OnDestroy {
     if (!parsedResult.parsed) {
       this.graphResponse.set(null);
       this.processNarrative.set(null);
+      this.announceError(`Validation errors found: ${parsedResult.errors.length}.`);
       return;
     }
 
@@ -457,6 +541,7 @@ export class App implements AfterViewInit, OnDestroy {
     if (operationErrors.length > 0) {
       this.graphResponse.set(null);
       this.processNarrative.set(null);
+      this.announceError(`Validation errors found: ${operationErrors.length}.`);
       return;
     }
 
@@ -490,6 +575,7 @@ export class App implements AfterViewInit, OnDestroy {
             this.graphResponse.set(null);
             this.processNarrative.set(null);
             this.backendError.set(mapInvalidBackendPayloadError());
+            this.announceError('Backend response is invalid.');
             return;
           }
 
@@ -499,9 +585,13 @@ export class App implements AfterViewInit, OnDestroy {
           if (previousSelected) {
             const restoredSelection = this.findMatchingNode(response.graph.nodes, previousSelected);
             if (restoredSelection) {
-              this.selectedNode.set(restoredSelection);
+              this.setSelectedNode(restoredSelection, { announce: false });
             }
           }
+
+          this.announceStatus(
+            `Graph ready with ${response.graph.nodes.length} nodes and ${response.graph.edges.length} edges.`,
+          );
 
           setTimeout(() => {
             try {
@@ -517,8 +607,38 @@ export class App implements AfterViewInit, OnDestroy {
           this.cy?.destroy();
           this.cy = null;
           this.backendError.set(mapBackendRequestError(error));
+          this.announceError('Backend request failed.');
         },
       });
+  }
+
+  private announceStatus(message: string): void {
+    this.liveStatusMessage.set(message);
+    this.liveErrorMessage.set('');
+  }
+
+  private announceError(message: string): void {
+    this.liveErrorMessage.set(message);
+  }
+
+  private setSelectedNode(node: GraphNode | null, options?: { announce?: boolean }): void {
+    const shouldAnnounce = options?.announce ?? true;
+    this.cy?.nodes().removeClass('node-selected');
+
+    if (!node) {
+      this.selectedNode.set(null);
+      this.detailPanelPosition.set(null);
+      if (shouldAnnounce) {
+        this.announceStatus('Node details closed.');
+      }
+      return;
+    }
+
+    this.cy?.getElementById(node.id).addClass('node-selected');
+    this.selectedNode.set(node);
+    if (shouldAnnounce) {
+      this.announceStatus(`Selected node: ${node.label}.`);
+    }
   }
 
   private resetOperationsByProgram(): void {
@@ -795,11 +915,7 @@ export class App implements AfterViewInit, OnDestroy {
     this.cy.on('tap', 'node', (event) => {
       const tappedId = event.target.data('id') as string;
       const node = graph.nodes.find((item) => item.id === tappedId) ?? null;
-      this.cy?.nodes().removeClass('node-selected');
-      if (node) {
-        event.target.addClass('node-selected');
-      }
-      this.selectedNode.set(node);
+      this.setSelectedNode(node, { announce: false });
     });
 
     this.cy.on('tap', (event) => {
@@ -807,8 +923,7 @@ export class App implements AfterViewInit, OnDestroy {
         return;
       }
 
-      this.cy?.nodes().removeClass('node-selected');
-      this.selectedNode.set(null);
+      this.setSelectedNode(null, { announce: false });
     });
   }
 
