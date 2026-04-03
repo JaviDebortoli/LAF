@@ -47,6 +47,50 @@ describe('LafProgramService', () => {
     });
   });
 
+  it('should return null when inferred attribute kinds mix numeric and qualitative values', () => {
+    const inferred = service.inferAttributeConfig(
+      `goodArea(houseA). {0.8;trusted}\nbuy(X) :- goodArea(X). {high;reliable}`,
+    );
+
+    expect(inferred).toBeNull();
+  });
+
+  it('should report invalid rule body literals during parsing', () => {
+    const result = service.parseProgram(
+      `goodArea(houseA). {0.8}\nbuy(X) :- goodArea(X), invalidLiteral(houseA). {0.85}`,
+    );
+
+    expect(result.parsed).toBeNull();
+    expect(result.errors).toContain(
+      'Line 2: invalid literal in rule body -> invalidLiteral(houseA)',
+    );
+  });
+
+  it('should apply interval selections with clamping and keep original parsed program unchanged', () => {
+    const parsedResult = service.parseProgram(
+      `basicServices(houseA). {[0.2, 0.6]}\nquietArea(X) :- basicServices(X). {[0.1, 0.4]}`,
+    );
+
+    expect(parsedResult.errors).toEqual([]);
+    expect(parsedResult.parsed).not.toBeNull();
+
+    const parsed = parsedResult.parsed;
+    if (!parsed) {
+      return;
+    }
+
+    const selections = new Map<string, number>();
+    selections.set(service.buildIntervalSelectionKey(parsed.facts[0].sourceKey, 0), 1);
+    selections.set(service.buildIntervalSelectionKey(parsed.rules[0].sourceKey, 0), -3);
+
+    const updated = service.applyIntervalSelections(parsed, selections);
+
+    expect(updated.facts[0].attributes).toEqual(['0.6']);
+    expect(updated.rules[0].attributes).toEqual(['0.1']);
+    expect(parsed.facts[0].attributes).toEqual(['0.2']);
+    expect(parsed.rules[0].attributes).toEqual(['0.1']);
+  });
+
   it('should require unique and non-empty operation label names', () => {
     const rows: OperationRow[] = [
       {

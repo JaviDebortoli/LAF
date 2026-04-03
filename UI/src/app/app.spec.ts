@@ -354,4 +354,105 @@ buy(X) :- goodArea(X). {0.85}`;
     });
     expect(incomingSupportToGoodArea.length).toBe(2);
   });
+
+  it('should introduce a single dMP node when one conclusion has multiple visible supports', () => {
+    const fixture = TestBed.createComponent(App);
+    const app = fixture.componentInstance as unknown as AppVisualGraphAccess;
+
+    const visual = app.buildVisualGraph({
+      nodes: [
+        createNode({
+          id: 'F_PREMISE_1',
+          label: 'basicServices(houseA)',
+          type: 'FACT',
+          attributes: ['0.8'],
+          deltaAttributes: ['0.8'],
+        }),
+        createNode({
+          id: 'F_PREMISE_2',
+          label: 'quietArea(houseA)',
+          type: 'FACT',
+          attributes: ['0.9'],
+          deltaAttributes: ['0.9'],
+        }),
+        createNode({
+          id: 'R_GOOD',
+          label: 'goodArea(X) :- quietArea(X).',
+          type: 'RULE',
+          attributes: ['0.7'],
+          deltaAttributes: ['0.7'],
+        }),
+        createNode({
+          id: 'F_GOOD',
+          label: 'goodArea(houseA)',
+          type: 'FACT',
+          attributes: ['1'],
+          deltaAttributes: ['1'],
+        }),
+      ],
+      edges: [
+        createEdge({ from: 'F_PREMISE_1', to: 'F_GOOD', kind: 'SUPPORT' }),
+        createEdge({ from: 'F_PREMISE_2', to: 'F_GOOD', kind: 'SUPPORT' }),
+        createEdge({ from: 'R_GOOD', to: 'F_GOOD', kind: 'SUPPORT' }),
+      ],
+    });
+
+    const dmpNodes = visual.nodes.filter((node) => node.type === 'DMP');
+    expect(dmpNodes.length).toBe(1);
+
+    const incomingToDmp = visual.edges.filter(
+      (edge) => edge.kind === 'SUPPORT' && edge.to === dmpNodes[0].id,
+    );
+    expect(incomingToDmp.length).toBe(3);
+
+    const incomingToGoodFact = visual.edges.filter(
+      (edge) => edge.kind === 'SUPPORT' && edge.to === 'F_GOOD',
+    );
+    expect(incomingToGoodFact).toEqual([
+      {
+        from: dmpNodes[0].id,
+        to: 'F_GOOD',
+        kind: 'SUPPORT',
+      },
+    ]);
+  });
+
+  it('should collapse repeated conflict edges into a single CA mediator pair', () => {
+    const fixture = TestBed.createComponent(App);
+    const app = fixture.componentInstance as unknown as AppVisualGraphAccess;
+
+    const visual = app.buildVisualGraph({
+      nodes: [
+        createNode({
+          id: 'F_BUY',
+          label: 'buy(houseA)',
+          type: 'FACT',
+          attributes: ['1'],
+          deltaAttributes: ['1'],
+        }),
+        createNode({
+          id: 'F_NOT_BUY',
+          label: '~buy(houseA)',
+          type: 'FACT',
+          attributes: ['1'],
+          deltaAttributes: ['0'],
+        }),
+      ],
+      edges: [
+        createEdge({ from: 'F_BUY', to: 'F_NOT_BUY', kind: 'CONFLICT' }),
+        createEdge({ from: 'F_NOT_BUY', to: 'F_BUY', kind: 'CONFLICT' }),
+        createEdge({ from: 'F_BUY', to: 'F_NOT_BUY', kind: 'CONFLICT' }),
+        createEdge({ from: 'F_NOT_BUY', to: 'F_BUY', kind: 'CONFLICT' }),
+      ],
+    });
+
+    const caNodes = visual.nodes.filter((node) => node.type === 'CA');
+    expect(caNodes.length).toBe(1);
+
+    const conflictEdges = visual.edges.filter((edge) => edge.kind === 'CONFLICT');
+    expect(conflictEdges).toEqual([
+      { from: 'F_BUY', to: caNodes[0].id, kind: 'CONFLICT' },
+      { from: 'F_NOT_BUY', to: caNodes[0].id, kind: 'CONFLICT' },
+    ]);
+  });
 });
