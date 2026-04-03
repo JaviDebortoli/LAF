@@ -30,26 +30,32 @@ interface GraphRequest {
   };
 }
 
-interface GraphNode {
+export type GraphNodeType = 'FACT' | 'RULE';
+
+export type GraphEdgeKind = 'SUPPORT' | 'AGGREGATION' | 'CONFLICT';
+
+export interface GraphNode {
   id: string;
   label: string;
-  type: string;
+  type: GraphNodeType;
   attributes: string[];
   deltaAttributes: string[];
   attributeIntervals?: (readonly [number, number] | null)[];
   sourceKey?: string;
 }
 
-interface GraphEdge {
+export interface GraphEdge {
   from: string;
   to: string;
-  kind: string;
+  kind: GraphEdgeKind;
 }
+
+type VisualNodeType = GraphNodeType | 'DMP' | 'CA';
 
 interface VisualNode {
   id: string;
   label: string;
-  type: string;
+  type: VisualNodeType;
   attributes: string[];
   deltaAttributes: string[];
   renderLabel: string;
@@ -61,7 +67,7 @@ interface VisualNode {
 interface VisualEdge {
   from: string;
   to: string;
-  kind: string;
+  kind: GraphEdgeKind;
 }
 
 interface NodeLabelDetailCell {
@@ -79,9 +85,14 @@ interface NodeLabelDetailRow {
   sliderValue: number | null;
 }
 
-interface GraphResponse {
+export interface GraphResponse {
   nodes: GraphNode[];
   edges: GraphEdge[];
+}
+
+interface VisualGraph {
+  nodes: VisualNode[];
+  edges: VisualEdge[];
 }
 
 interface FinalConclusionTrace {
@@ -205,14 +216,12 @@ export class App implements AfterViewInit, OnDestroy {
   private minGraphZoom = 0.2;
   private maxGraphZoom = 3;
   private isClampingViewport = false;
-  private panelDragState:
-    | {
-        offsetX: number;
-        offsetY: number;
-        panelWidth: number;
-        panelHeight: number;
-      }
-    | null = null;
+  private panelDragState: {
+    offsetX: number;
+    offsetY: number;
+    panelWidth: number;
+    panelHeight: number;
+  } | null = null;
   private readonly onPanelDragMove = (event: MouseEvent) => this.handlePanelDragMove(event);
   private readonly onPanelDragEnd = () => this.endDetailPanelDrag();
 
@@ -882,7 +891,7 @@ export class App implements AfterViewInit, OnDestroy {
     return this.clamp(current, min, max);
   }
 
-  private buildVisualGraph(graph: GraphResponse): { nodes: VisualNode[]; edges: VisualEdge[] } {
+  private buildVisualGraph(graph: GraphResponse): VisualGraph {
     const allEdges: VisualEdge[] = graph.edges.map((edge) => ({ ...edge }));
     const supportEdges = allEdges.filter((edge) => edge.kind === 'SUPPORT');
     const aggregationEdges = allEdges.filter((edge) => edge.kind === 'AGGREGATION');
@@ -1329,7 +1338,8 @@ export class App implements AfterViewInit, OnDestroy {
       const labelName = this.operationRows[index]?.labelName?.trim() || `label_${index + 1}`;
       const intervalBounds = this.readIntervalBounds(node, index);
       const sliderValue = this.readSliderValue(node, index, intervalBounds);
-      const muValue = sliderValue !== null ? this.normalizeNumeric(sliderValue) : node.attributes?.[index];
+      const muValue =
+        sliderValue !== null ? this.normalizeNumeric(sliderValue) : node.attributes?.[index];
       rows.push({
         labelName,
         color: this.detailBarPalette[index % this.detailBarPalette.length],

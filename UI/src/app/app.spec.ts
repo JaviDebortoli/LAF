@@ -1,5 +1,17 @@
 import { TestBed } from '@angular/core/testing';
-import { App } from './app';
+import { App, type GraphEdge, type GraphNode, type GraphResponse } from './app';
+
+interface VisualGraphResult {
+  nodes: Array<{ id: string; label: string; type: string }>;
+  edges: GraphEdge[];
+}
+
+interface AppVisualGraphAccess {
+  buildVisualGraph(graph: GraphResponse): VisualGraphResult;
+}
+
+const createNode = (node: GraphNode): GraphNode => node;
+const createEdge = (edge: GraphEdge): GraphEdge => edge;
 
 describe('App', () => {
   const THREE_LABELS_PROGRAM = `goodArea(houseA). {0.8;high;trusted}
@@ -24,7 +36,9 @@ buy(X) :- goodArea(X). {0.85}`;
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Argumentation Intelligence Studio');
+    expect(compiled.querySelector('h1')?.textContent).toContain(
+      'Argumentation Intelligence Studio',
+    );
     expect(compiled.querySelector('.page-header p')?.textContent).toContain(
       'A unified workspace for exploring and comparing argumentation formalisms.',
     );
@@ -131,235 +145,213 @@ buy(X) :- goodArea(X). {0.85}`;
 
   it('should collapse duplicate fact nodes before creating CA conflicts', () => {
     const fixture = TestBed.createComponent(App);
-    const app = fixture.componentInstance as any;
+    const app = fixture.componentInstance as unknown as AppVisualGraphAccess;
 
-    const visual: {
-      nodes: Array<{ id: string; label: string; type: string }>;
-      edges: Array<{ from: string; to: string; kind: string }>;
-    } = app.buildVisualGraph({
+    const visual = app.buildVisualGraph({
       nodes: [
-        {
+        createNode({
           id: 'F_BUY_1',
           label: 'buy(houseA)',
           type: 'FACT',
           attributes: ['1', '1'],
           deltaAttributes: ['1', '1'],
-        },
-        {
+        }),
+        createNode({
           id: 'F_BUY_2',
           label: 'buy(houseA)',
           type: 'FACT',
           attributes: ['1', '1'],
           deltaAttributes: ['0', '0'],
-        },
-        {
+        }),
+        createNode({
           id: 'F_NOT_BUY',
           label: '~buy(houseA)',
           type: 'FACT',
           attributes: ['1', '1'],
           deltaAttributes: ['0', '0'],
-        },
-        {
+        }),
+        createNode({
           id: 'R_BUY',
           label: 'buy(X) :- goodArea(X).',
           type: 'RULE',
           attributes: ['0.85', '1'],
           deltaAttributes: ['0.85', '1'],
-        },
-        {
+        }),
+        createNode({
           id: 'R_NOT_BUY',
           label: '~buy(X) :- ~goodArea(X).',
           type: 'RULE',
           attributes: ['0.5', '0.8'],
           deltaAttributes: ['0.5', '0.8'],
-        },
+        }),
       ],
       edges: [
-        { from: 'R_BUY', to: 'F_BUY_1', kind: 'SUPPORT' },
-        { from: 'R_BUY', to: 'F_BUY_2', kind: 'SUPPORT' },
-        { from: 'R_NOT_BUY', to: 'F_NOT_BUY', kind: 'SUPPORT' },
-        { from: 'F_BUY_1', to: 'F_NOT_BUY', kind: 'CONFLICT' },
-        { from: 'F_NOT_BUY', to: 'F_BUY_1', kind: 'CONFLICT' },
-        { from: 'F_BUY_2', to: 'F_NOT_BUY', kind: 'CONFLICT' },
-        { from: 'F_NOT_BUY', to: 'F_BUY_2', kind: 'CONFLICT' },
+        createEdge({ from: 'R_BUY', to: 'F_BUY_1', kind: 'SUPPORT' }),
+        createEdge({ from: 'R_BUY', to: 'F_BUY_2', kind: 'SUPPORT' }),
+        createEdge({ from: 'R_NOT_BUY', to: 'F_NOT_BUY', kind: 'SUPPORT' }),
+        createEdge({ from: 'F_BUY_1', to: 'F_NOT_BUY', kind: 'CONFLICT' }),
+        createEdge({ from: 'F_NOT_BUY', to: 'F_BUY_1', kind: 'CONFLICT' }),
+        createEdge({ from: 'F_BUY_2', to: 'F_NOT_BUY', kind: 'CONFLICT' }),
+        createEdge({ from: 'F_NOT_BUY', to: 'F_BUY_2', kind: 'CONFLICT' }),
       ],
     });
 
     const buyFactNodes = visual.nodes.filter(
-      (node: { id: string; label: string; type: string }) => {
-        return node.type === 'FACT' && node.label === 'buy(houseA)';
-      },
+      (node) => node.type === 'FACT' && node.label === 'buy(houseA)',
     );
     expect(buyFactNodes.length).toBe(1);
 
-    const caNodes = visual.nodes.filter(
-      (node: { id: string; label: string; type: string }) => node.type === 'CA',
-    );
+    const caNodes = visual.nodes.filter((node) => node.type === 'CA');
     expect(caNodes.length).toBe(1);
 
-    const conflictEdges = visual.edges.filter(
-      (edge: { from: string; to: string; kind: string }) => {
-        return edge.kind === 'CONFLICT';
-      },
-    );
+    const conflictEdges = visual.edges.filter((edge) => edge.kind === 'CONFLICT');
     expect(conflictEdges.length).toBe(2);
   });
 
   it('should keep only aggregated target and avoid duplicated buy conflict nodes', () => {
     const fixture = TestBed.createComponent(App);
-    const app = fixture.componentInstance as any;
+    const app = fixture.componentInstance as unknown as AppVisualGraphAccess;
 
-    const visual: {
-      nodes: Array<{ id: string; label: string; type: string }>;
-      edges: Array<{ from: string; to: string; kind: string }>;
-    } = app.buildVisualGraph({
+    const visual = app.buildVisualGraph({
       nodes: [
-        {
+        createNode({
           id: 'F_QA',
           label: 'quietArea(houseA)',
           type: 'FACT',
           attributes: ['1', '1'],
           deltaAttributes: ['1', '1'],
-        },
-        {
+        }),
+        createNode({
           id: 'F_BS',
           label: 'basicServices(houseA)',
           type: 'FACT',
           attributes: ['0.75', '0.95'],
           deltaAttributes: ['0.75', '0.95'],
-        },
-        {
+        }),
+        createNode({
           id: 'R_GOOD_Q',
           label: 'goodArea(X) :- quietArea(X).',
           type: 'RULE',
           attributes: ['0.75', '0.9'],
           deltaAttributes: ['0.75', '0.9'],
-        },
-        {
+        }),
+        createNode({
           id: 'R_GOOD_B',
           label: 'goodArea(X) :- basicServices(X).',
           type: 'RULE',
           attributes: ['0.75', '0.95'],
           deltaAttributes: ['0.75', '0.95'],
-        },
-        {
+        }),
+        createNode({
           id: 'F_GOOD_A',
           label: 'goodArea(houseA)',
           type: 'FACT',
           attributes: ['1', '1'],
           deltaAttributes: ['1', '1'],
-        },
-        {
+        }),
+        createNode({
           id: 'F_GOOD_B',
           label: 'goodArea(houseA)',
           type: 'FACT',
           attributes: ['1', '1'],
           deltaAttributes: ['1', '1'],
-        },
-        {
+        }),
+        createNode({
           id: 'F_GOOD_FINAL',
           label: 'goodArea(houseA)',
           type: 'FACT',
           attributes: ['1', '1'],
           deltaAttributes: ['0', '0'],
-        },
-        {
+        }),
+        createNode({
           id: 'R_BUY',
           label: 'buy(X) :- goodArea(X).',
           type: 'RULE',
           attributes: ['0.85', '1'],
           deltaAttributes: ['0.85', '1'],
-        },
-        {
+        }),
+        createNode({
           id: 'R_NOT_BUY',
           label: '~buy(X) :- ~goodArea(X).',
           type: 'RULE',
           attributes: ['0.5', '0.8'],
           deltaAttributes: ['0.5', '0.8'],
-        },
-        {
+        }),
+        createNode({
           id: 'F_BUY_1',
           label: 'buy(houseA)',
           type: 'FACT',
           attributes: ['1', '1'],
           deltaAttributes: ['1', '1'],
-        },
-        {
+        }),
+        createNode({
           id: 'F_BUY_2',
           label: 'buy(houseA)',
           type: 'FACT',
           attributes: ['1', '1'],
           deltaAttributes: ['0', '0'],
-        },
-        {
+        }),
+        createNode({
           id: 'F_NOT_GOOD',
           label: '~goodArea(houseA)',
           type: 'FACT',
           attributes: ['1', '1'],
           deltaAttributes: ['0', '0'],
-        },
-        {
+        }),
+        createNode({
           id: 'F_NOT_BUY',
           label: '~buy(houseA)',
           type: 'FACT',
           attributes: ['1', '1'],
           deltaAttributes: ['0', '0'],
-        },
+        }),
       ],
       edges: [
-        { from: 'F_QA', to: 'F_GOOD_A', kind: 'SUPPORT' },
-        { from: 'R_GOOD_Q', to: 'F_GOOD_A', kind: 'SUPPORT' },
-        { from: 'F_BS', to: 'F_GOOD_B', kind: 'SUPPORT' },
-        { from: 'R_GOOD_B', to: 'F_GOOD_B', kind: 'SUPPORT' },
-        { from: 'F_GOOD_A', to: 'F_GOOD_FINAL', kind: 'AGGREGATION' },
-        { from: 'F_GOOD_B', to: 'F_GOOD_FINAL', kind: 'AGGREGATION' },
-        { from: 'F_GOOD_FINAL', to: 'F_BUY_1', kind: 'SUPPORT' },
-        { from: 'R_BUY', to: 'F_BUY_1', kind: 'SUPPORT' },
-        { from: 'F_GOOD_FINAL', to: 'F_BUY_2', kind: 'SUPPORT' },
-        { from: 'R_BUY', to: 'F_BUY_2', kind: 'SUPPORT' },
-        { from: 'F_NOT_GOOD', to: 'F_NOT_BUY', kind: 'SUPPORT' },
-        { from: 'R_NOT_BUY', to: 'F_NOT_BUY', kind: 'SUPPORT' },
-        { from: 'F_BUY_1', to: 'F_NOT_BUY', kind: 'CONFLICT' },
-        { from: 'F_NOT_BUY', to: 'F_BUY_1', kind: 'CONFLICT' },
-        { from: 'F_BUY_2', to: 'F_NOT_BUY', kind: 'CONFLICT' },
-        { from: 'F_NOT_BUY', to: 'F_BUY_2', kind: 'CONFLICT' },
+        createEdge({ from: 'F_QA', to: 'F_GOOD_A', kind: 'SUPPORT' }),
+        createEdge({ from: 'R_GOOD_Q', to: 'F_GOOD_A', kind: 'SUPPORT' }),
+        createEdge({ from: 'F_BS', to: 'F_GOOD_B', kind: 'SUPPORT' }),
+        createEdge({ from: 'R_GOOD_B', to: 'F_GOOD_B', kind: 'SUPPORT' }),
+        createEdge({ from: 'F_GOOD_A', to: 'F_GOOD_FINAL', kind: 'AGGREGATION' }),
+        createEdge({ from: 'F_GOOD_B', to: 'F_GOOD_FINAL', kind: 'AGGREGATION' }),
+        createEdge({ from: 'F_GOOD_FINAL', to: 'F_BUY_1', kind: 'SUPPORT' }),
+        createEdge({ from: 'R_BUY', to: 'F_BUY_1', kind: 'SUPPORT' }),
+        createEdge({ from: 'F_GOOD_FINAL', to: 'F_BUY_2', kind: 'SUPPORT' }),
+        createEdge({ from: 'R_BUY', to: 'F_BUY_2', kind: 'SUPPORT' }),
+        createEdge({ from: 'F_NOT_GOOD', to: 'F_NOT_BUY', kind: 'SUPPORT' }),
+        createEdge({ from: 'R_NOT_BUY', to: 'F_NOT_BUY', kind: 'SUPPORT' }),
+        createEdge({ from: 'F_BUY_1', to: 'F_NOT_BUY', kind: 'CONFLICT' }),
+        createEdge({ from: 'F_NOT_BUY', to: 'F_BUY_1', kind: 'CONFLICT' }),
+        createEdge({ from: 'F_BUY_2', to: 'F_NOT_BUY', kind: 'CONFLICT' }),
+        createEdge({ from: 'F_NOT_BUY', to: 'F_BUY_2', kind: 'CONFLICT' }),
       ],
     });
 
-    const byId = new Set(visual.nodes.map((node: { id: string }) => node.id));
+    const byId = new Set(visual.nodes.map((node) => node.id));
     expect(byId.has('F_GOOD_A')).toBe(false);
     expect(byId.has('F_GOOD_B')).toBe(false);
 
-    const buyFacts = visual.nodes.filter((node: { id: string; label: string; type: string }) => {
-      return node.type === 'FACT' && node.label === 'buy(houseA)';
-    });
+    const buyFacts = visual.nodes.filter(
+      (node) => node.type === 'FACT' && node.label === 'buy(houseA)',
+    );
     expect(buyFacts.length).toBe(1);
 
     const goodAreaFacts = visual.nodes.filter(
-      (node: { id: string; label: string; type: string }) => {
-        return node.type === 'FACT' && node.label === 'goodArea(houseA)';
-      },
+      (node) => node.type === 'FACT' && node.label === 'goodArea(houseA)',
     );
     expect(goodAreaFacts.length).toBe(1);
 
-    const caNodes = visual.nodes.filter(
-      (node: { id: string; label: string; type: string }) => node.type === 'CA',
-    );
+    const caNodes = visual.nodes.filter((node) => node.type === 'CA');
     expect(caNodes.length).toBe(1);
 
     const targetGoodAreaId = goodAreaFacts[0].id;
-    const nodeTypeById = new Map(
-      visual.nodes.map((node: { id: string; type: string }) => [node.id, node.type]),
-    );
-    const incomingSupportToGoodArea = visual.edges.filter(
-      (edge: { from: string; to: string; kind: string }) => {
-        return (
-          edge.kind === 'SUPPORT' &&
-          edge.to === targetGoodAreaId &&
-          nodeTypeById.get(edge.from) === 'DMP'
-        );
-      },
-    );
+    const nodeTypeById = new Map(visual.nodes.map((node) => [node.id, node.type]));
+    const incomingSupportToGoodArea = visual.edges.filter((edge) => {
+      return (
+        edge.kind === 'SUPPORT' &&
+        edge.to === targetGoodAreaId &&
+        nodeTypeById.get(edge.from) === 'DMP'
+      );
+    });
     expect(incomingSupportToGoodArea.length).toBe(2);
   });
 });
