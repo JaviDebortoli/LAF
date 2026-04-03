@@ -68,6 +68,8 @@ interface VisualNode {
   renderImage: string;
   renderWidth: number;
   renderHeight: number;
+  conflictLeftId?: string;
+  conflictRightId?: string;
 }
 
 interface VisualEdge {
@@ -153,14 +155,14 @@ interface FormalismTab {
 
 const EXAMPLE_PROGRAM = `basicServices(houseA). {0.75; [0.80, 0.95]}
 goodNeighbors(houseA). {0.75; 0.9}
-gangOperate(houseA). {0.5; [0.7, 1.0]}
+gangOperate(houseA). {0.1; [0.1, 0.3]}
 buy(X) :- goodArea(X). {0.85; 1.0}
 goodArea(X) :- basicServices(X). {0.75; [0.8, 0.95]}
 goodArea(X) :- quietArea(X). {0.75; 0.9}
 quietArea(X) :- goodNeighbors(X). {0.75; 0.9}
-insecureArea(X) :- gangOperate(X). {0.5; [0.7, 1.0]}
-~goodArea(X) :- insecureArea(X). {0.5; [0.7, 1.0]}
-~buy(X) :- ~goodArea(X). {0.5; 0.8}`;
+insecureArea(X) :- gangOperate(X). {0.2; [0.1, 0.4]}
+~goodArea(X) :- insecureArea(X). {0.1; [0.2, 0.4]}
+~buy(X) :- ~goodArea(X). {0.1; 0.2}`;
 
 @Component({
   selector: 'app-root',
@@ -905,12 +907,13 @@ export class App implements AfterViewInit, OnDestroy {
           },
         },
       ],
-      layout: {
-        ...this.createLayoutOptions(),
-      },
     });
 
-    this.initializeGraphViewport();
+    this.cy.one('layoutstop', () => {
+      this.positionConflictMediatorsAtMidpoint();
+      this.initializeGraphViewport();
+    });
+    this.cy.layout(this.createLayoutOptions()).run();
 
     this.cy.on('tap', 'node', (event) => {
       const tappedId = event.target.data('id') as string;
@@ -924,6 +927,35 @@ export class App implements AfterViewInit, OnDestroy {
       }
 
       this.setSelectedNode(null, { announce: false });
+    });
+  }
+
+  private positionConflictMediatorsAtMidpoint(): void {
+    const cy = this.cy;
+    if (!cy) {
+      return;
+    }
+
+    const caNodes = cy.nodes('node[type = "CA"]');
+    caNodes.forEach((caNode) => {
+      const leftId = caNode.data('conflictLeftId') as string | undefined;
+      const rightId = caNode.data('conflictRightId') as string | undefined;
+      if (!leftId || !rightId) {
+        return;
+      }
+
+      const leftNode = cy.getElementById(leftId);
+      const rightNode = cy.getElementById(rightId);
+      if (leftNode.empty() || rightNode.empty()) {
+        return;
+      }
+
+      const leftPosition = leftNode.position();
+      const rightPosition = rightNode.position();
+      caNode.position({
+        x: (leftPosition.x + rightPosition.x) / 2,
+        y: (leftPosition.y + rightPosition.y) / 2,
+      });
     });
   }
 
@@ -1156,6 +1188,8 @@ export class App implements AfterViewInit, OnDestroy {
         renderImage: '',
         renderWidth: 64,
         renderHeight: 44,
+        conflictLeftId: firstId,
+        conflictRightId: secondId,
       });
 
       collapsedSupportEdges.push(

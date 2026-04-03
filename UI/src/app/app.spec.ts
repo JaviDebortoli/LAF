@@ -2,7 +2,13 @@ import { TestBed } from '@angular/core/testing';
 import { App, type GraphEdge, type GraphNode, type GraphResponse } from './app';
 
 interface VisualGraphResult {
-  nodes: Array<{ id: string; label: string; type: string }>;
+  nodes: Array<{
+    id: string;
+    label: string;
+    type: string;
+    conflictLeftId?: string;
+    conflictRightId?: string;
+  }>;
   edges: GraphEdge[];
 }
 
@@ -597,6 +603,8 @@ buy(X) :- goodArea(X). {0.85}`;
 
     const caNodes = visual.nodes.filter((node) => node.type === 'CA');
     expect(caNodes.length).toBe(1);
+    expect(caNodes[0].conflictLeftId).toBe('F_BUY');
+    expect(caNodes[0].conflictRightId).toBe('F_NOT_BUY');
 
     const conflictEdges = visual.edges.filter((edge) => edge.kind === 'CONFLICT');
     expect(conflictEdges).toEqual([
