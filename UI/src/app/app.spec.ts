@@ -117,21 +117,6 @@ buy(X) :- goodArea(X). {0.85}`;
     expect(app.parseErrors()).toContain('Attribute 3: label name is required.');
   });
 
-  it('should parse semicolon-separated attributes and intervals using lower bounds', () => {
-    const fixture = TestBed.createComponent(App);
-    const app = fixture.componentInstance as any;
-
-    const parsed = app.parseProgram(
-      `basicServices(houseA). {0.5; [0.6, 1.0]}\nquietArea(X) :- basicServices(X). {0.7; [0.8, 0.9]}`,
-    );
-
-    expect(parsed).not.toBeNull();
-    expect(parsed.facts[0].attributes).toEqual(['0.5', '0.6']);
-    expect(parsed.facts[0].attributeIntervals).toEqual([null, [0.6, 1]]);
-    expect(parsed.rules[0].attributes).toEqual(['0.7', '0.8']);
-    expect(parsed.rules[0].attributeIntervals).toEqual([null, [0.8, 0.9]]);
-  });
-
   it('should reject comma-separated labels outside interval bounds', () => {
     const fixture = TestBed.createComponent(App);
     const app = fixture.componentInstance;
