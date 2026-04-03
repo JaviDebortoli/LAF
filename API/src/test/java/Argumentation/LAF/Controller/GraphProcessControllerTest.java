@@ -1,33 +1,55 @@
 package Argumentation.LAF.Controller;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import Argumentation.LAF.DTO.Request.GraphRequest;
+import Argumentation.LAF.Service.AlgebraMapperService;
+import Argumentation.LAF.Service.GraphBuilderService;
+import Argumentation.LAF.Service.GraphProcessService;
+import Argumentation.LAF.Service.InferenceService;
+import Argumentation.LAF.Service.NarrativeServiceUnavailableException;
+import Argumentation.LAF.Service.ProgramMapperService;
 import org.hamcrest.Matchers;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.web.context.WebApplicationContext;
 
-@SpringBootTest
+@WebMvcTest(controllers = GraphController.class)
+@Import(GlobalExceptionHandler.class)
 class GraphProcessControllerTest {
+    @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private WebApplicationContext webApplicationContext;
+    @MockitoBean
+    private ProgramMapperService programMapperService;
 
-    @BeforeEach
-    void setUp() {
-        this.mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
-    }
+    @MockitoBean
+    private AlgebraMapperService algebraMapperService;
+
+    @MockitoBean
+    private InferenceService inferenceService;
+
+    @MockitoBean
+    private GraphBuilderService graphBuilderService;
+
+    @MockitoBean
+    private GraphProcessService graphProcessService;
 
     @Test
     void shouldReturnServiceUnavailableWhenLlmIsNotConfigured() throws Exception {
+        given(graphProcessService.process(any(GraphRequest.class)))
+                .willThrow(new NarrativeServiceUnavailableException(
+                        "Narrative generation service is temporarily unavailable."));
+
         mockMvc.perform(post("/api/graph/process")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(buildRequestJson()))
@@ -49,6 +71,8 @@ class GraphProcessControllerTest {
                 .andExpect(jsonPath("$.error").value("Bad Request"))
                 .andExpect(jsonPath("$.message", Matchers.containsString("facts")))
                 .andExpect(jsonPath("$.path").value("/api/graph/process"));
+
+        verifyNoInteractions(graphProcessService);
     }
 
     @Test
@@ -61,6 +85,8 @@ class GraphProcessControllerTest {
                 .andExpect(jsonPath("$.error").value("Bad Request"))
                 .andExpect(jsonPath("$.message", Matchers.containsString("facts")))
                 .andExpect(jsonPath("$.path").value("/api/graph"));
+
+        verifyNoInteractions(programMapperService, algebraMapperService, inferenceService, graphBuilderService);
     }
 
     private String buildRequestJson() {
