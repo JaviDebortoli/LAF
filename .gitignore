@@ -39,6 +39,7 @@ API/out/
 API/.mvn/timing.properties
 
 # Angular / Node (frontend)
+/package-lock.json
 UI/node_modules/
 UI/dist/
 UI/.angular/

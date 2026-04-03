@@ -1,5 +1,8 @@
 package Argumentation.LAF.DTO;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 /**
@@ -24,10 +27,15 @@ import java.util.List;
  */
 public class RuleDTO {
     /** Name of the rule head, representing the conclusion inferred by the rule. */
+    @NotBlank
     private String headName;
     /** List of literals forming the body of the rule (its premises). */
+    @NotNull
+    @NotEmpty
     private List<String> bodyLiterals;
     /** Set of attributes associated with the rule. */
+    @NotNull
+    @NotEmpty
     private String[] attributes;
     /** Optional interval bounds aligned with attributes (numeric labels only). */
     private Double[][] attributeIntervals;

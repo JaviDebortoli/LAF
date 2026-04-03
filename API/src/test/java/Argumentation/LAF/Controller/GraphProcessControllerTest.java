@@ -4,6 +4,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +39,30 @@ class GraphProcessControllerTest {
                 .andExpect(jsonPath("$.path").value("/api/graph/process"));
     }
 
+    @Test
+    void shouldReturnBadRequestWhenFactsListIsEmpty() throws Exception {
+        mockMvc.perform(post("/api/graph/process")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(buildInvalidRequestJsonWithEmptyFacts()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message", Matchers.containsString("facts")))
+                .andExpect(jsonPath("$.path").value("/api/graph/process"));
+    }
+
+    @Test
+    void shouldReturnBadRequestForGraphEndpointWhenFactsListIsEmpty() throws Exception {
+        mockMvc.perform(post("/api/graph")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(buildInvalidRequestJsonWithEmptyFacts()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message", Matchers.containsString("facts")))
+                .andExpect(jsonPath("$.path").value("/api/graph"));
+    }
+
     private String buildRequestJson() {
         return """
                 {
@@ -53,6 +78,22 @@ class GraphProcessControllerTest {
                     "labels": [
                       {"labelName":"label_1","supportFunction":"X + Y","aggregationFunction":"X + Y","conflictFunction":"max(X-Y,0)"},
                       {"labelName":"label_2","supportFunction":"X + Y","aggregationFunction":"X + Y","conflictFunction":"max(X-Y,0)"}
+                    ]
+                  }
+                }
+                """;
+    }
+
+    private String buildInvalidRequestJsonWithEmptyFacts() {
+        return """
+                {
+                  "facts": [],
+                  "rules": [
+                    {"headName":"goodArea","bodyLiterals":["basicServices"],"attributes":["0.85","0.95"],"sourceKey":"RULE|goodArea|basicServices"}
+                  ],
+                  "operations": {
+                    "labels": [
+                      {"labelName":"label_1","supportFunction":"X + Y","aggregationFunction":"X + Y","conflictFunction":"max(X-Y,0)"}
                     ]
                   }
                 }

@@ -1,6 +1,9 @@
 package Argumentation.LAF.DTO.Request;
 
 import Argumentation.LAF.DTO.LabelOperationsDTO;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 /**
@@ -23,6 +26,9 @@ import java.util.List;
 public class OperationInputRequest {
     /** List of label operation definitions. Each element specifies the algebraic 
      * functions (support, aggregation and conflict) associated with a label.*/
+    @NotNull
+    @NotEmpty
+    @Valid
     private List<LabelOperationsDTO> labels;
 
     /**

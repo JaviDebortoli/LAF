@@ -2,6 +2,9 @@ package Argumentation.LAF.DTO.Request;
 
 import Argumentation.LAF.DTO.FactDTO;
 import Argumentation.LAF.DTO.RuleDTO;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 /**
@@ -26,16 +29,24 @@ public class GraphRequest {
     /**
      * List of facts that compose the factual component of the knowledge base.
      */
+    @NotNull
+    @NotEmpty
+    @Valid
     private List<FactDTO> facts;
     /**
      * List of rules that compose the inferential component of the knowledge base.
      */
+    @NotNull
+    @NotEmpty
+    @Valid
     private List<RuleDTO> rules;
     /**
      * Algebraic operation definitions associated with argument labels.
      * These operations define how support, aggregation and conflict are computed
      * during the inference process.
      */
+    @NotNull
+    @Valid
     private OperationInputRequest operations;
     
     /**

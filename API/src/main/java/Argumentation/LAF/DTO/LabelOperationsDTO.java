@@ -1,5 +1,7 @@
 package Argumentation.LAF.DTO;
 
+import jakarta.validation.constraints.NotBlank;
+
 /**
  * Data Transfer Object (DTO) that represents the algebraic operations
  * associated with a specific label in the Label-Based Argumentation Framework.
@@ -22,12 +24,16 @@ package Argumentation.LAF.DTO;
  */
 public class LabelOperationsDTO {
     /** Name of the label to which the operations apply. */
+    @NotBlank
     private String labelName;
     /** Expression defining the support operation. */
+    @NotBlank
     private String supportFunction;
     /** Expression defining the aggregation operation. */
+    @NotBlank
     private String aggregationFunction;
     /** Expression defining the conflict operation. */
+    @NotBlank
     private String conflictFunction;
 
     /**

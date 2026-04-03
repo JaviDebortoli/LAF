@@ -1,5 +1,8 @@
 package Argumentation.LAF.DTO;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import java.util.Arrays;
 
 /**
@@ -25,10 +28,14 @@ import java.util.Arrays;
  */
 public class FactDTO {
     /** Identifier of the fact. */
+    @NotBlank
     private String name;
     /** Logical or textual expression representing the argument. */
+    @NotBlank
     private String argument;
     /** Set of attributes associated with the fact. */
+    @NotNull
+    @NotEmpty
     private String[] attributes;
     /** Optional interval bounds aligned with attributes (numeric labels only). */
     private Double[][] attributeIntervals;

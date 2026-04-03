@@ -8,6 +8,7 @@ import Argumentation.LAF.Service.GraphBuilderService;
 import Argumentation.LAF.Service.GraphProcessService;
 import Argumentation.LAF.Service.InferenceService;
 import Argumentation.LAF.Service.ProgramMapperService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -72,7 +73,7 @@ public class GraphController {
      * @return a {@link ResponseEntity} containing the generated {@link GraphResponse}
      */
     @PostMapping("/graph")
-    public ResponseEntity<GraphResponse> buildGraph(@RequestBody GraphRequest request) {
+    public ResponseEntity<GraphResponse> buildGraph(@Valid @RequestBody GraphRequest request) {
         var facts = programMapperService.mapFacts(request.getFacts());
         var rules = programMapperService.mapRules(request.getRules());
         var operations = algebraMapperService.mapOperations(request.getOperations());
@@ -83,7 +84,7 @@ public class GraphController {
     }
 
     @PostMapping("/graph/process")
-    public ResponseEntity<GraphProcessResponse> processGraphAndNarrative(@RequestBody GraphRequest request) {
+    public ResponseEntity<GraphProcessResponse> processGraphAndNarrative(@Valid @RequestBody GraphRequest request) {
         GraphProcessResponse response = graphProcessService.process(request);
         return ResponseEntity.ok(response);
     }
