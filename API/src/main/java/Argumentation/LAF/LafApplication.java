@@ -1,7 +1,9 @@
 package Argumentation.LAF;
 
+import Argumentation.LAF.Config.LlmNarrationProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
 /**
  * Main entry point of the LAF web application.
@@ -22,6 +24,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @author Javi Debórtoli
  */
 @SpringBootApplication
+@EnableConfigurationProperties(LlmNarrationProperties.class)
 public class LafApplication {
     /**
      * Starts the Spring Boot application.

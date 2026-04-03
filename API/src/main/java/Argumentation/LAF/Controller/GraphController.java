@@ -9,6 +9,8 @@ import Argumentation.LAF.Service.GraphProcessService;
 import Argumentation.LAF.Service.InferenceService;
 import Argumentation.LAF.Service.ProgramMapperService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -30,6 +32,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api")
 public class GraphController {
+    private static final Logger LOGGER = LoggerFactory.getLogger(GraphController.class);
+
     private final ProgramMapperService programMapperService;
     private final AlgebraMapperService algebraMapperService;
     private final InferenceService inferenceService;
@@ -74,18 +78,63 @@ public class GraphController {
      */
     @PostMapping("/graph")
     public ResponseEntity<GraphResponse> buildGraph(@Valid @RequestBody GraphRequest request) {
-        var facts = programMapperService.mapFacts(request.getFacts());
-        var rules = programMapperService.mapRules(request.getRules());
-        var operations = algebraMapperService.mapOperations(request.getOperations());
-        var argumentativeGraph = inferenceService.buildGraph(facts, rules, operations);
-        var response = graphBuilderService.toGraphResponse(argumentativeGraph);
+        final String endpoint = "/api/graph";
+        LOGGER.info(
+                "Processing request endpoint={} factsCount={} rulesCount={}",
+                endpoint,
+                safeSize(request.getFacts()),
+                safeSize(request.getRules()));
+        try {
+            var facts = programMapperService.mapFacts(request.getFacts());
+            var rules = programMapperService.mapRules(request.getRules());
+            var operations = algebraMapperService.mapOperations(request.getOperations());
+            var argumentativeGraph = inferenceService.buildGraph(facts, rules, operations);
+            var response = graphBuilderService.toGraphResponse(argumentativeGraph);
 
-        return ResponseEntity.ok(response);
+            LOGGER.info(
+                    "Completed request endpoint={} nodesCount={} edgesCount={}",
+                    endpoint,
+                    safeSize(response.getNodes()),
+                    safeSize(response.getEdges()));
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException exception) {
+            LOGGER.warn(
+                    "Failed request endpoint={} errorType={}",
+                    endpoint,
+                    exception.getClass().getSimpleName());
+            throw exception;
+        }
     }
 
     @PostMapping("/graph/process")
     public ResponseEntity<GraphProcessResponse> processGraphAndNarrative(@Valid @RequestBody GraphRequest request) {
-        GraphProcessResponse response = graphProcessService.process(request);
-        return ResponseEntity.ok(response);
+        final String endpoint = "/api/graph/process";
+        LOGGER.info(
+                "Processing request endpoint={} factsCount={} rulesCount={}",
+                endpoint,
+                safeSize(request.getFacts()),
+                safeSize(request.getRules()));
+        try {
+            GraphProcessResponse response = graphProcessService.process(request);
+            GraphResponse graphResponse = response.getGraph();
+
+            LOGGER.info(
+                    "Completed request endpoint={} nodesCount={} edgesCount={} llmModel={}",
+                    endpoint,
+                    graphResponse != null ? safeSize(graphResponse.getNodes()) : 0,
+                    graphResponse != null ? safeSize(graphResponse.getEdges()) : 0,
+                    response.getMeta() != null ? response.getMeta().getModel() : "n/a");
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException exception) {
+            LOGGER.warn(
+                    "Failed request endpoint={} errorType={}",
+                    endpoint,
+                    exception.getClass().getSimpleName());
+            throw exception;
+        }
+    }
+
+    private int safeSize(java.util.Collection<?> collection) {
+        return collection == null ? 0 : collection.size();
     }
 }

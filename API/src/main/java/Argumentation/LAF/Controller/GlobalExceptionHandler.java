@@ -5,6 +5,8 @@ import Argumentation.LAF.Service.NarrativeServiceUnavailableException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -14,11 +16,17 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
+    private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(NarrativeServiceUnavailableException.class)
     public ResponseEntity<ErrorResponse> handleNarrativeServiceUnavailable(
             NarrativeServiceUnavailableException exception,
             HttpServletRequest request) {
+        LOGGER.warn(
+                "Handled exception endpoint={} status={} errorType={}",
+                request.getRequestURI(),
+                HttpStatus.SERVICE_UNAVAILABLE.value(),
+                exception.getClass().getSimpleName());
         return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, exception.getMessage(), request);
     }
 
@@ -33,6 +41,11 @@ public class GlobalExceptionHandler {
                 .collect(Collectors.joining("; "));
 
         String message = fieldErrors.isBlank() ? "Invalid request payload." : fieldErrors;
+        LOGGER.warn(
+                "Handled exception endpoint={} status={} errorType={}",
+                request.getRequestURI(),
+                HttpStatus.BAD_REQUEST.value(),
+                exception.getClass().getSimpleName());
         return buildErrorResponse(HttpStatus.BAD_REQUEST, message, request);
     }
 
@@ -40,6 +53,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleIllegalArgument(
             IllegalArgumentException exception,
             HttpServletRequest request) {
+        LOGGER.warn(
+                "Handled exception endpoint={} status={} errorType={}",
+                request.getRequestURI(),
+                HttpStatus.BAD_REQUEST.value(),
+                exception.getClass().getSimpleName());
         return buildErrorResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
     }
 
@@ -47,6 +65,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleGenericException(
             Exception exception,
             HttpServletRequest request) {
+        LOGGER.error(
+                "Handled exception endpoint={} status={} errorType={}",
+                request.getRequestURI(),
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                exception.getClass().getSimpleName());
         return buildErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "An unexpected error occurred. Please contact support.",

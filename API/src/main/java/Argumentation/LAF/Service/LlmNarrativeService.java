@@ -1,5 +1,6 @@
 package Argumentation.LAF.Service;
 
+import Argumentation.LAF.Config.LlmNarrationProperties;
 import Argumentation.LAF.DTO.Response.NarrativeTraceResponse;
 import java.io.IOException;
 import java.net.URI;
@@ -7,7 +8,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -39,30 +39,14 @@ public class LlmNarrativeService {
 
             Output must be strict JSON with a single key:
             { "narrative": "..." }
-            """;
+    """;
 
     private final ObjectMapper objectMapper;
+    private final LlmNarrationProperties properties;
 
-    @Value("${laf.narration.llm.enabled:false}")
-    private boolean enabled;
-
-    @Value("${laf.narration.llm.base-url:https://api.openai.com/v1/chat/completions}")
-    private String baseUrl;
-
-    @Value("${laf.narration.llm.api-key:}")
-    private String apiKey;
-
-    @Value("${laf.narration.llm.model:gpt-4o-mini}")
-    private String model;
-
-    @Value("${laf.narration.llm.prompt-version:narrative-v1}")
-    private String promptVersion;
-
-    @Value("${laf.narration.llm.timeout-ms:15000}")
-    private int timeoutMs;
-
-    public LlmNarrativeService(ObjectMapper objectMapper) {
+    public LlmNarrativeService(ObjectMapper objectMapper, LlmNarrationProperties properties) {
         this.objectMapper = objectMapper;
+        this.properties = properties;
     }
 
     public GenerationResult generateNarrative(NarrativeTraceResponse trace) {
@@ -74,15 +58,15 @@ public class LlmNarrativeService {
             String traceJson = objectMapper.writeValueAsString(trace);
             String requestBody = buildRequestBody(traceJson);
 
-            HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl))
-                    .timeout(Duration.ofMillis(timeoutMs))
+            HttpRequest request = HttpRequest.newBuilder(URI.create(properties.getBaseUrl()))
+                    .timeout(Duration.ofMillis(properties.getTimeoutMs()))
                     .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Authorization", "Bearer " + properties.getApiKey())
                     .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                     .build();
 
             HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofMillis(timeoutMs))
+                    .connectTimeout(Duration.ofMillis(properties.getTimeoutMs()))
                     .build();
 
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
@@ -100,13 +84,15 @@ public class LlmNarrativeService {
     }
 
     private boolean isConfigured() {
-        return enabled && apiKey != null && !apiKey.isBlank();
+        return properties.isEnabled()
+                && properties.getApiKey() != null
+                && !properties.getApiKey().isBlank();
     }
 
     private String buildRequestBody(String traceJson) throws IOException {
         ObjectNode root = objectMapper.createObjectNode();
-        root.put("model", model);
-        root.put("temperature", 0.2);
+        root.put("model", properties.getModel());
+        root.put("temperature", properties.getTemperature());
         root.set("response_format", objectMapper.createObjectNode().put("type", "json_object"));
         root.set(
                 "messages",
@@ -119,7 +105,7 @@ public class LlmNarrativeService {
 
     private GenerationResult parseResponse(String body) throws IOException {
         JsonNode root = objectMapper.readTree(body);
-        String resolvedModel = root.path("model").asText(model);
+        String resolvedModel = root.path("model").asText(properties.getModel());
         String content = root.path("choices").path(0).path("message").path("content").asText("");
 
         if (content.isBlank()) {
@@ -132,7 +118,7 @@ public class LlmNarrativeService {
             throw new NarrativeServiceUnavailableException(TEMPORARILY_UNAVAILABLE_MESSAGE);
         }
 
-        return new GenerationResult(narrative, resolvedModel, promptVersion);
+        return new GenerationResult(narrative, resolvedModel, properties.getPromptVersion());
     }
 
     public record GenerationResult(String narrative, String model, String promptVersion) {
