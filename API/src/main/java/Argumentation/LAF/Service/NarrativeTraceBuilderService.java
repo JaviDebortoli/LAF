@@ -13,7 +13,9 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import org.springframework.stereotype.Service;
 
@@ -50,9 +52,11 @@ public class NarrativeTraceBuilderService {
                 .sorted(Comparator.comparing(GraphNodeResponse::getLabel, String.CASE_INSENSITIVE_ORDER))
                 .toList();
 
+        List<GraphNodeResponse> collapsedFinalFacts = collapseFinalFactsByLiteral(finalFacts);
+
         List<FinalConclusionTraceResponse> finalConclusions = new ArrayList<>();
         List<DerivationTraceResponse> derivations = new ArrayList<>();
-        for (GraphNodeResponse finalFact : finalFacts) {
+        for (GraphNodeResponse finalFact : collapsedFinalFacts) {
             finalConclusions.add(toFinalConclusion(finalFact));
             derivations.add(buildDerivation(finalFact, incomingInference, nodeById));
         }
@@ -68,6 +72,58 @@ public class NarrativeTraceBuilderService {
 
     private boolean isInferenceEdge(String kind) {
         return "SUPPORT".equals(kind) || "AGGREGATION".equals(kind);
+    }
+
+    private List<GraphNodeResponse> collapseFinalFactsByLiteral(List<GraphNodeResponse> finalFacts) {
+        Map<String, GraphNodeResponse> representativeByLiteral = new HashMap<>();
+
+        for (GraphNodeResponse candidate : finalFacts) {
+            String literal = Objects.toString(candidate.getLabel(), "");
+            GraphNodeResponse currentRepresentative = representativeByLiteral.get(literal);
+            if (currentRepresentative == null || isBetterRepresentative(candidate, currentRepresentative)) {
+                representativeByLiteral.put(literal, candidate);
+            }
+        }
+
+        return representativeByLiteral.values().stream()
+                .sorted(Comparator
+                        .comparing((GraphNodeResponse node) -> safeLowerCase(node.getLabel()))
+                        .thenComparing(node -> safeLowerCase(node.getId()))
+                        .thenComparing(node -> Objects.toString(node.getId(), "")))
+                .toList();
+    }
+
+    private boolean isBetterRepresentative(GraphNodeResponse candidate, GraphNodeResponse current) {
+        int deltaScoreComparison = Double.compare(
+                numericDeltaSum(candidate.getDeltaAttributes()),
+                numericDeltaSum(current.getDeltaAttributes()));
+        if (deltaScoreComparison != 0) {
+            return deltaScoreComparison > 0;
+        }
+
+        int deltaSignatureComparison = safeLowerCase(compareSignature(candidate.getDeltaAttributes()))
+                .compareTo(safeLowerCase(compareSignature(current.getDeltaAttributes())));
+        if (deltaSignatureComparison != 0) {
+            return deltaSignatureComparison < 0;
+        }
+
+        int idComparison = safeLowerCase(candidate.getId()).compareTo(safeLowerCase(current.getId()));
+        if (idComparison != 0) {
+            return idComparison < 0;
+        }
+
+        return Objects.toString(candidate.getId(), "").compareTo(Objects.toString(current.getId(), "")) < 0;
+    }
+
+    private String compareSignature(String[] values) {
+        if (values == null || values.length == 0) {
+            return "";
+        }
+        return String.join("|", values);
+    }
+
+    private String safeLowerCase(String value) {
+        return Objects.toString(value, "").toLowerCase(Locale.ROOT);
     }
 
     private FinalConclusionTraceResponse toFinalConclusion(GraphNodeResponse node) {

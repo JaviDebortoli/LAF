@@ -78,6 +78,30 @@ class NarrativeTraceBuilderServiceTest {
         assertTrue(trace.getFinalConclusions().get(0).getAcceptabilityReason().contains("0.0"));
     }
 
+    @Test
+    void shouldCollapseDuplicatedFinalConclusionsByLiteralAndAlignDerivations() {
+        GraphResponse graph = new GraphResponse();
+        graph.setNodes(java.util.List.of(
+                node("F1", "baseA(houseA)", "FACT", new String[] {"0.20"}, new String[] {"0.20"}),
+                node("F2", "baseB(houseA)", "FACT", new String[] {"0.70"}, new String[] {"0.70"}),
+                node("F3", "buy(houseA)", "FACT", new String[] {"0.40"}, new String[] {"0.40"}),
+                node("F4", "buy(houseA)", "FACT", new String[] {"0.90"}, new String[] {"0.90"})));
+        graph.setEdges(java.util.List.of(
+                edge("F1", "F3", "AGGREGATION"),
+                edge("F2", "F4", "AGGREGATION")));
+
+        var trace = service.build(graph);
+
+        assertEquals(1, trace.getFinalConclusions().size());
+        assertEquals("buy(houseA)", trace.getFinalConclusions().get(0).getLiteral());
+        assertEquals("0.90", trace.getFinalConclusions().get(0).getDelta()[0]);
+
+        assertEquals(1, trace.getDerivations().size());
+        assertEquals("buy(houseA)", trace.getDerivations().get(0).getTargetLiteral());
+        assertTrue(trace.getDerivations().get(0).getSteps().contains("baseB(houseA)"));
+        assertFalse(trace.getDerivations().get(0).getSteps().contains("baseA(houseA)"));
+    }
+
     private GraphNodeResponse node(String id, String label, String type, String[] mu, String[] delta) {
         GraphNodeResponse node = new GraphNodeResponse();
         node.setId(id);
