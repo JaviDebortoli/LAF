@@ -42,6 +42,12 @@ buy(X) :- goodArea(X). {0.85}`;
     expect(compiled.querySelector('.page-header p')?.textContent).toContain(
       'A unified workspace for exploring and comparing argumentation formalisms.',
     );
+
+    const formalismTabs = compiled.querySelectorAll<HTMLButtonElement>('.formalism-tab');
+    expect(formalismTabs.length).toBeGreaterThan(0);
+    formalismTabs.forEach((tab) => {
+      expect(tab.classList.contains('touch-target')).toBe(true);
+    });
   });
 
   it('should expose skip link and main landmark target', async () => {
@@ -54,6 +60,7 @@ buy(X) :- goodArea(X). {0.85}`;
 
     expect(skipLink).not.toBeNull();
     expect(skipLink?.getAttribute('href')).toBe('#main-content');
+    expect(skipLink?.classList.contains('touch-target')).toBe(true);
     expect(main).not.toBeNull();
     expect(main?.getAttribute('tabindex')).toBe('-1');
   });
@@ -76,8 +83,12 @@ buy(X) :- goodArea(X). {0.85}`;
     await fixture.whenStable();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    const statusRegion = compiled.querySelector<HTMLElement>('p[role="status"][aria-live="polite"]');
-    const alertRegion = compiled.querySelector<HTMLElement>('p[role="alert"][aria-live="assertive"]');
+    const statusRegion = compiled.querySelector<HTMLElement>(
+      'p[role="status"][aria-live="polite"]',
+    );
+    const alertRegion = compiled.querySelector<HTMLElement>(
+      'p[role="alert"][aria-live="assertive"]',
+    );
 
     expect(statusRegion).not.toBeNull();
     expect(alertRegion).not.toBeNull();
@@ -93,6 +104,11 @@ buy(X) :- goodArea(X). {0.85}`;
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelectorAll('.operation-tab').length).toBe(3);
     expect(compiled.querySelector('.operation-tab.active')?.textContent).toContain('label_1');
+
+    const operationTabs = compiled.querySelectorAll<HTMLButtonElement>('.operation-tab');
+    operationTabs.forEach((tab) => {
+      expect(tab.classList.contains('touch-target')).toBe(true);
+    });
   });
 
   it('should switch active label tab on click', () => {
@@ -150,10 +166,15 @@ buy(X) :- goodArea(X). {0.85}`;
     const toolbar = compiled.querySelector<HTMLElement>('.graph-controls[role="toolbar"]');
     const canvas = compiled.querySelector<HTMLElement>('#graph-canvas');
     const helpText = compiled.querySelector<HTMLElement>('#graph-canvas-help');
+    const controls = compiled.querySelectorAll<HTMLButtonElement>('.graph-control-btn');
 
     expect(toolbar?.getAttribute('aria-controls')).toBe('graph-canvas');
     expect(canvas?.getAttribute('aria-describedby')).toBe('graph-canvas-help');
     expect(helpText).not.toBeNull();
+    expect(controls.length).toBe(4);
+    controls.forEach((control) => {
+      expect(control.classList.contains('touch-target')).toBe(true);
+    });
   });
 
   it('should support keyboard node selection on graph canvas', () => {

@@ -28,8 +28,14 @@
 
 .skip-link:focus-visible {
   top: 10px;
-  outline: 2px solid #4b6d96;
+  outline: 3px solid #2563eb;
   outline-offset: 2px;
+  box-shadow: 0 0 0 2px #ffffff;
+}
+
+.touch-target {
+  min-width: 24px;
+  min-height: 24px;
 }
 
 .visually-hidden {
@@ -94,11 +100,14 @@
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .formalism-tab.active {
-  border-color: #324f76;
-  background: #d7e5f6;
+  border-color: #27405f;
+  background: #d3e4fa;
   color: #11253e;
 }
 
@@ -165,10 +174,11 @@ textarea:focus,
 input:focus,
 button:focus-visible,
 .operation-tab:focus-visible,
+.formalism-tab:focus-visible,
 a:focus-visible,
 .graph-canvas:focus-visible {
-  outline: 2px solid #4b6d96;
-  outline-offset: 1px;
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
 }
 
 .program-input {
@@ -212,11 +222,14 @@ button[disabled] {
   font-weight: 600;
   white-space: nowrap;
   padding: 5px 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .operation-tab.active {
-  border-color: #3a5a82;
-  background: #dce8f5;
+  border-color: #28405f;
+  background: #d5e6fa;
   color: #182b43;
 }
 
@@ -382,17 +395,20 @@ button[disabled] {
 }
 
 .graph-control-btn {
-  border: 1px solid #95a6bd;
+  border: 1px solid #4f6480;
   background: rgba(255, 255, 255, 0.94);
-  color: #1f3350;
+  color: #14273f;
   font-size: 12px;
   padding: 4px 10px;
   border-radius: 999px;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .graph-control-btn:hover {
-  background: #edf2f8;
+  background: #e6edf5;
 }
 
 .graph-canvas {
@@ -452,9 +468,9 @@ button[disabled] {
 }
 
 .panel-close {
-  border: 1px solid #97a8bf;
+  border: 1px solid #4f6480;
   background: #ffffff;
-  color: #223247;
+  color: #102337;
   padding: 3px 9px;
   font-size: 12px;
 }
@@ -675,5 +691,16 @@ button[disabled] {
     bottom: 8px;
     width: auto;
     max-height: 62%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

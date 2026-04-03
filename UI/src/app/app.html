@@ -1,4 +1,4 @@
-<a class="skip-link" href="#main-content">Skip to main content</a>
+<a class="skip-link touch-target" href="#main-content">Skip to main content</a>
 
 <main id="main-content" class="page" tabindex="-1">
   <p class="visually-hidden" role="status" aria-live="polite" aria-atomic="true">
@@ -23,7 +23,7 @@
         @for (tab of formalismTabs; track tab.id) {
           <button
             type="button"
-            class="formalism-tab"
+            class="formalism-tab touch-target"
             [class.active]="isFormalismActive(tab.id)"
             [disabled]="!tab.enabled"
             (click)="selectFormalism(tab.id)"
@@ -75,7 +75,7 @@
           <button
             type="button"
             role="tab"
-            class="operation-tab"
+            class="operation-tab touch-target"
             [class.active]="index === activeOperationTabIndex"
             [attr.aria-selected]="index === activeOperationTabIndex"
             [attr.aria-controls]="'operation-panel-' + index"
@@ -182,12 +182,24 @@
           aria-label="Graph navigation controls"
           aria-controls="graph-canvas"
         >
-          <button type="button" class="graph-control-btn" (click)="zoomInGraph()">Zoom in</button>
-          <button type="button" class="graph-control-btn" (click)="zoomOutGraph()">Zoom out</button>
-          <button type="button" class="graph-control-btn" (click)="fitGraphToContent()">
+          <button type="button" class="graph-control-btn touch-target" (click)="zoomInGraph()">
+            Zoom in
+          </button>
+          <button type="button" class="graph-control-btn touch-target" (click)="zoomOutGraph()">
+            Zoom out
+          </button>
+          <button
+            type="button"
+            class="graph-control-btn touch-target"
+            (click)="fitGraphToContent()"
+          >
             Fit graph
           </button>
-          <button type="button" class="graph-control-btn" (click)="resetGraphViewport()">
+          <button
+            type="button"
+            class="graph-control-btn touch-target"
+            (click)="resetGraphViewport()"
+          >
             Reset view
           </button>
         </div>
@@ -224,7 +236,11 @@
           >
             <div class="node-detail-head" (mousedown)="startDetailPanelDrag($event, detailPanel)">
               <h3 id="selected-node-heading">Selected node details</h3>
-              <button type="button" class="panel-close" (click)="closeSelectedNodeDetails()">
+              <button
+                type="button"
+                class="panel-close touch-target"
+                (click)="closeSelectedNodeDetails()"
+              >
                 Close
               </button>
             </div>
