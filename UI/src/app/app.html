@@ -1,9 +1,13 @@
-<main class="page">
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<main id="main-content" class="page" tabindex="-1">
   <header class="app-header page-header">
     <div class="app-header-top">
       <div>
         <h1 class="app-title">Argumentation Intelligence Studio</h1>
-        <p class="app-subtitle">A unified workspace for exploring and comparing argumentation formalisms.</p>
+        <p class="app-subtitle">
+          A unified workspace for exploring and comparing argumentation formalisms.
+        </p>
       </div>
     </div>
 
@@ -26,19 +30,23 @@
     </div>
   </header>
 
-  <section class="card">
+  <section class="card" aria-labelledby="knowledge-program-heading">
     <div class="card-header">
-      <h2>1) Knowledge Program</h2>
+      <h2 id="knowledge-program-heading">1) Knowledge Program</h2>
       <div class="actions">
         <button type="button" (click)="loadExample()">Load example</button>
       </div>
     </div>
 
-    <p class="hint">
+    <p id="program-input-hint" class="hint">
       Enter facts and rules with labels separated by semicolons. Intervals use [min, max].
     </p>
 
+    <label class="visually-hidden" for="program-input">Knowledge program input</label>
+
     <textarea
+      id="program-input"
+      aria-describedby="program-input-hint"
       [(ngModel)]="programText"
       (ngModelChange)="onProgramTextChange($event)"
       class="program-input"
@@ -47,9 +55,9 @@
     ></textarea>
   </section>
 
-  <section class="card">
+  <section class="card" aria-labelledby="label-operations-heading">
     <div class="card-header">
-      <h2>2) Label Operations</h2>
+      <h2 id="label-operations-heading">2) Label Operations</h2>
     </div>
 
     @if (operationRows.length === 0) {
@@ -125,9 +133,9 @@
     }
   </section>
 
-  <section class="card">
+  <section class="card" aria-labelledby="run-inference-heading">
     <div class="card-header">
-      <h2>3) Run Inference and Visualize Graph</h2>
+      <h2 id="run-inference-heading">3) Run Inference and Visualize Graph</h2>
       <div class="actions">
         <button type="button" (click)="processProgram()" [disabled]="isLoading()">
           {{ isLoading() ? 'Processing...' : 'Process' }}
@@ -163,14 +171,22 @@
         <div class="graph-controls" aria-label="Graph navigation controls">
           <button type="button" class="graph-control-btn" (click)="zoomInGraph()">Zoom in</button>
           <button type="button" class="graph-control-btn" (click)="zoomOutGraph()">Zoom out</button>
-          <button type="button" class="graph-control-btn" (click)="fitGraphToContent()">Fit graph</button>
+          <button type="button" class="graph-control-btn" (click)="fitGraphToContent()">
+            Fit graph
+          </button>
           <button type="button" class="graph-control-btn" (click)="resetGraphViewport()">
             Reset view
           </button>
         </div>
 
         <div class="graph-layout">
-          <div #graphCanvas class="graph-canvas" aria-label="Argumentative graph"></div>
+          <div
+            #graphCanvas
+            class="graph-canvas"
+            tabindex="0"
+            role="img"
+            aria-label="Argumentative graph canvas"
+          ></div>
         </div>
 
         @if (selectedNode()) {
@@ -185,7 +201,9 @@
           >
             <div class="node-detail-head" (mousedown)="startDetailPanelDrag($event, detailPanel)">
               <h3>Selected node details</h3>
-              <button type="button" class="panel-close" (click)="closeSelectedNodeDetails()">Close</button>
+              <button type="button" class="panel-close" (click)="closeSelectedNodeDetails()">
+                Close
+              </button>
             </div>
 
             <p><strong>Label:</strong> {{ selectedNode()?.label }}</p>
@@ -222,23 +240,34 @@
                                   <div
                                     class="value-editable-fill"
                                     [style.left.%]="getEditableZoneStartPercent(row.intervalBounds)"
-                                    [style.width.%]="getEditableFillWidthPercent(row.intervalBounds, row.sliderValue)"
+                                    [style.width.%]="
+                                      getEditableFillWidthPercent(
+                                        row.intervalBounds,
+                                        row.sliderValue
+                                      )
+                                    "
                                     [style.background-color]="row.color"
                                   ></div>
                                   <div
                                     class="value-blocked value-blocked-left"
-                                    [style.width.%]="getEditableZoneStartPercent(row.intervalBounds)"
+                                    [style.width.%]="
+                                      getEditableZoneStartPercent(row.intervalBounds)
+                                    "
                                     [style.background-color]="row.color"
                                   ></div>
                                   <div
                                     class="value-blocked value-blocked-right"
-                                    [style.width.%]="100 - getEditableZoneEndPercent(row.intervalBounds)"
+                                    [style.width.%]="
+                                      100 - getEditableZoneEndPercent(row.intervalBounds)
+                                    "
                                     [style.background-color]="row.color"
                                   ></div>
                                   <div
                                     class="value-editable-zone"
                                     [style.left.%]="getEditableZoneStartPercent(row.intervalBounds)"
-                                    [style.width.%]="getEditableZoneWidthPercent(row.intervalBounds)"
+                                    [style.width.%]="
+                                      getEditableZoneWidthPercent(row.intervalBounds)
+                                    "
                                   ></div>
                                 } @else {
                                   <div
@@ -325,7 +354,8 @@
               <ul>
                 @for (item of result.trace.derivations; track item.targetLiteral) {
                   <li>
-                    <strong>{{ item.targetLiteral }}</strong>: {{ item.steps.join(' → ') }}
+                    <strong>{{ item.targetLiteral }}</strong
+                    >: {{ item.steps.join(' → ') }}
                   </li>
                 }
               </ul>
@@ -334,7 +364,10 @@
             <article>
               <h4>Conflicts</h4>
               <ul>
-                @for (item of result.trace.conflicts; track item.leftLiteral + '|' + item.rightLiteral) {
+                @for (
+                  item of result.trace.conflicts;
+                  track item.leftLiteral + '|' + item.rightLiteral
+                ) {
                   <li>{{ item.leftLiteral }} ↔ {{ item.rightLiteral }}</li>
                 }
               </ul>
@@ -343,10 +376,11 @@
             <article>
               <h4>Conflict winners</h4>
               <ul>
-                @for (item of result.trace.conflicts; track item.leftLiteral + '|' + item.rightLiteral) {
-                  <li>
-                    {{ item.winner }} — {{ item.winnerReason }}
-                  </li>
+                @for (
+                  item of result.trace.conflicts;
+                  track item.leftLiteral + '|' + item.rightLiteral
+                ) {
+                  <li>{{ item.winner }} — {{ item.winnerReason }}</li>
                 }
               </ul>
             </article>

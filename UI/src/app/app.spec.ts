@@ -44,6 +44,33 @@ buy(X) :- goodArea(X). {0.85}`;
     );
   });
 
+  it('should expose skip link and main landmark target', async () => {
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const skipLink = compiled.querySelector<HTMLAnchorElement>('a.skip-link');
+    const main = compiled.querySelector<HTMLElement>('main#main-content');
+
+    expect(skipLink).not.toBeNull();
+    expect(skipLink?.getAttribute('href')).toBe('#main-content');
+    expect(main).not.toBeNull();
+    expect(main?.getAttribute('tabindex')).toBe('-1');
+  });
+
+  it('should provide an accessible label for the program textarea', async () => {
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const textarea = compiled.querySelector<HTMLTextAreaElement>('#program-input');
+    const label = compiled.querySelector<HTMLLabelElement>('label[for="program-input"]');
+
+    expect(textarea).not.toBeNull();
+    expect(label).not.toBeNull();
+    expect(textarea?.getAttribute('aria-describedby')).toBe('program-input-hint');
+  });
+
   it('should render dynamic tabs based on detected labels', () => {
     const fixture = TestBed.createComponent(App);
     const app = fixture.componentInstance;
