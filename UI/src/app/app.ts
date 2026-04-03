@@ -12,6 +12,12 @@ import {
   type OperationRow,
   type RuleInput,
 } from './services/laf-program.service';
+import {
+  mapBackendRequestError,
+  mapGraphRenderError,
+  mapInvalidBackendPayloadError,
+  type HttpLikeError,
+} from './utils/ui-error.util';
 
 cytoscape.use(dagre);
 
@@ -483,9 +489,7 @@ export class App implements AfterViewInit, OnDestroy {
           ) {
             this.graphResponse.set(null);
             this.processNarrative.set(null);
-            this.backendError.set(
-              'Backend returned invalid JSON: expected graph, narrative, trace, and meta fields.',
-            );
+            this.backendError.set(mapInvalidBackendPayloadError());
             return;
           }
 
@@ -503,18 +507,16 @@ export class App implements AfterViewInit, OnDestroy {
             try {
               this.renderGraph(response.graph);
             } catch (renderError) {
-              this.backendError.set(
-                `Failed to render graph: ${renderError instanceof Error ? renderError.message : String(renderError)}`,
-              );
+              this.backendError.set(mapGraphRenderError(renderError));
             }
           }, 0);
         },
-        error: (error: { error?: unknown; message?: string }) => {
+        error: (error: HttpLikeError) => {
           this.graphResponse.set(null);
           this.processNarrative.set(null);
           this.cy?.destroy();
           this.cy = null;
-          this.backendError.set(this.buildBackendErrorMessage(error));
+          this.backendError.set(mapBackendRequestError(error));
         },
       });
   }
@@ -647,18 +649,6 @@ export class App implements AfterViewInit, OnDestroy {
       (node) => node.type === selectedNode.type && node.label === selectedNode.label,
     );
     return byLabel ?? null;
-  }
-
-  private buildBackendErrorMessage(error: { error?: unknown; message?: string }): string {
-    if (typeof error.error === 'string') {
-      return error.error;
-    }
-
-    if (error.error && typeof error.error === 'object') {
-      return JSON.stringify(error.error);
-    }
-
-    return error.message ?? 'Unexpected error while calling backend.';
   }
 
   private renderGraph(graph: GraphResponse): void {
