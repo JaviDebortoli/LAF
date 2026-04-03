@@ -796,6 +796,8 @@ export class App implements AfterViewInit, OnDestroy {
           renderImage: node.renderImage,
           renderWidth: node.renderWidth,
           renderHeight: node.renderHeight,
+          conflictLeftId: node.conflictLeftId,
+          conflictRightId: node.conflictRightId,
         },
       })),
       ...visualGraph.edges.map((edge, index) => ({
