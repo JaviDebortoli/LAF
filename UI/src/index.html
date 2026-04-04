@@ -2,9 +2,65 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>LafUi</title>
+    <title>Argumentation Intelligence Studio | LAF Formalism Workspace</title>
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Argumentation Intelligence Studio is a unified workspace to model, run, and visualize labelled argumentation with the LAF formalism."
+    />
+    <meta
+      name="robots"
+      content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
+    />
+    <link rel="canonical" href="/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Argumentation Intelligence Studio" />
+    <meta
+      property="og:title"
+      content="Argumentation Intelligence Studio | LAF Formalism Workspace"
+    />
+    <meta
+      property="og:description"
+      content="Explore and compare argumentation formalisms with focus on the LAF formalism, label operations, and graph-based inference."
+    />
+    <meta property="og:url" content="/" />
+
+    <meta name="twitter:card" content="summary" />
+    <meta
+      name="twitter:title"
+      content="Argumentation Intelligence Studio | LAF Formalism Workspace"
+    />
+    <meta
+      name="twitter:description"
+      content="Model, execute, and visualize labelled argumentation with the LAF formalism in a single web workspace."
+    />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Argumentation Intelligence Studio",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Web",
+        "description": "A unified workspace for exploring and comparing argumentation formalisms, including the LAF formalism for labelled argumentation.",
+        "browserRequirements": "Requires JavaScript. Requires HTML5.",
+        "inLanguage": "en"
+      }
+    </script>
+
+    <script>
+      (function () {
+        var canonical = document.querySelector('link[rel="canonical"]');
+        var ogUrl = document.querySelector('meta[property="og:url"]');
+        var absoluteHomeUrl = window.location.origin + '/';
+
+        if (canonical) canonical.setAttribute('href', absoluteHomeUrl);
+        if (ogUrl) ogUrl.setAttribute('content', absoluteHomeUrl);
+      })();
+    </script>
+
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
   </head>
   <body>
