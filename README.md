@@ -98,20 +98,7 @@ La interfaz permite ajustar labels intervalares desde el detalle del nodo:
 - El control deslizante solo se mueve dentro del tramo editable del intervalo.
 - Al confirmar el cambio, se reprocesa el programa y se redibuja el grafo con los nuevos valores seleccionados.
 
-## 8) Correspondencia teoria <-> implementacion
-
-La teoria formal completa esta en:
-
-- `docs/theory/laf-formalism.md`
-
-La implementacion en este repositorio materializa ese formalismo mediante:
-
-- Algebra por atributo (soporte/agregacion/conflicto)
-- Propagacion de labels en el grafo argumentativo
-- Resolucion de conflicto por contradiccion explicita
-- Evaluacion gradual de conclusiones segun labels
-
-## 9) Alcance de este documento
+## 8) Alcance de este documento
 
 Este README define el marco de implementacion del formalismo LAF en el monorepo.
 
