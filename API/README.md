@@ -17,6 +17,12 @@ Endpoint de proceso completo (grafo + narrativa):
 
 - `POST /api/graph/process`
 
+Control opcional de explicabilidad:
+
+- `explainabilityEnabled` (boolean, opcional) en el body de `POST /api/graph/process`
+  - `true` o ausente: intenta generar narrativa con LLM.
+  - `false`: omite la llamada al LLM y devuelve solo el grafo con estado de explicabilidad.
+
 ## Requisitos
 
 - Java 25
@@ -62,6 +68,13 @@ En `POST /api/graph/process` la salida incluye ademas:
 - `narrative`: texto narrativo del experimento.
 - `trace`: conclusiones finales, derivaciones, conflictos y ganador por conflicto.
 - `meta`: modelo y version de prompt usada.
+- `explainability`: estado de explicabilidad (`ok`, `disabled`, `unavailable`) y mensaje.
+
+Comportamiento resiliente:
+
+- Si el servicio LLM no esta disponible, el endpoint `POST /api/graph/process`
+  **sigue devolviendo el grafo** y marca `explainability.status = unavailable`.
+- En ese caso no se devuelve `503` por la falla de narracion dentro de este flujo.
 
 ## Configuracion de narracion LLM
 
@@ -78,7 +91,7 @@ Recomendado: usar variable de entorno para la key:
 
 - `laf.narration.llm.api-key=${OPENAI_API_KEY:}`
 
-Si el servicio LLM no esta disponible, el backend responde `503` con el mensaje:
+El mensaje estandar de indisponibilidad de narracion se mantiene como:
 
 - `Narrative generation service is temporarily unavailable.`
 

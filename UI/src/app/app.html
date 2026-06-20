@@ -145,6 +145,21 @@
     <div class="card-header">
       <h2 id="run-inference-heading">3) Run Inference and Visualize Graph</h2>
       <div class="actions">
+        <label class="explainability-toggle-control">
+          <span class="explainability-toggle-label">Explicabilidad</span>
+          <span class="explainability-switch">
+            <input
+              type="checkbox"
+              role="switch"
+              [attr.aria-checked]="explainabilityEnabled"
+              aria-label="Alternar explicabilidad"
+              [(ngModel)]="explainabilityEnabled"
+            />
+            <span class="explainability-switch-track" aria-hidden="true">
+              <span class="thumb"></span>
+            </span>
+          </span>
+        </label>
         <button type="button" (click)="processProgram()" [disabled]="isLoading()">
           {{ isLoading() ? 'Processing...' : 'Process' }}
         </button>
@@ -373,62 +388,80 @@
       @if (processNarrative(); as result) {
         <div class="narrative-output" aria-label="Experiment narrative output">
           <h3>Experiment narrative</h3>
-          <p class="narrative-text">{{ result.narrative }}</p>
+          @if (result.explainability.status === 'ok') {
+            <p class="narrative-text">{{ result.narrative || 'Narrative is not available.' }}</p>
 
-          <div class="narrative-meta">
-            <span>Model: {{ result.meta.model }}</span>
-            <span>Prompt: {{ result.meta.promptVersion }}</span>
-            <span>Generated at: {{ result.meta.generatedAt }}</span>
-          </div>
+            @if (result.meta) {
+              <div class="narrative-meta">
+                <span>Model: {{ result.meta.model }}</span>
+                <span>Prompt: {{ result.meta.promptVersion }}</span>
+                <span>Generated at: {{ result.meta.generatedAt }}</span>
+              </div>
+            }
 
-          <div class="trace-grid">
-            <article>
-              <h4>Final conclusions</h4>
-              <ul>
-                @for (item of result.trace.finalConclusions; track item.literal) {
-                  <li>
-                    <strong>{{ item.literal }}</strong> — {{ item.acceptability }}
-                  </li>
-                }
-              </ul>
-            </article>
+            @if (result.trace) {
+              <div class="trace-grid">
+                <article>
+                  <h4>Final conclusions</h4>
+                  <ul>
+                    @for (item of result.trace.finalConclusions; track item.literal) {
+                      <li>
+                        <strong>{{ item.literal }}</strong> — {{ item.acceptability }}
+                      </li>
+                    }
+                  </ul>
+                </article>
 
-            <article>
-              <h4>How conclusions were obtained</h4>
-              <ul>
-                @for (item of result.trace.derivations; track item.targetLiteral) {
-                  <li>
-                    <strong>{{ item.targetLiteral }}</strong
-                    >: {{ item.steps.join(' → ') }}
-                  </li>
-                }
-              </ul>
-            </article>
+                <article>
+                  <h4>How conclusions were obtained</h4>
+                  <ul>
+                    @for (item of result.trace.derivations; track item.targetLiteral) {
+                      <li>
+                        <strong>{{ item.targetLiteral }}</strong
+                        >: {{ item.steps.join(' → ') }}
+                      </li>
+                    }
+                  </ul>
+                </article>
 
-            <article>
-              <h4>Conflicts</h4>
-              <ul>
-                @for (
-                  item of result.trace.conflicts;
-                  track item.leftLiteral + '|' + item.rightLiteral
-                ) {
-                  <li>{{ item.leftLiteral }} ↔ {{ item.rightLiteral }}</li>
-                }
-              </ul>
-            </article>
+                <article>
+                  <h4>Conflicts</h4>
+                  <ul>
+                    @for (
+                      item of result.trace.conflicts;
+                      track item.leftLiteral + '|' + item.rightLiteral
+                    ) {
+                      <li>{{ item.leftLiteral }} ↔ {{ item.rightLiteral }}</li>
+                    }
+                  </ul>
+                </article>
 
-            <article>
-              <h4>Conflict winners</h4>
-              <ul>
-                @for (
-                  item of result.trace.conflicts;
-                  track item.leftLiteral + '|' + item.rightLiteral
-                ) {
-                  <li>{{ item.winner }} — {{ item.winnerReason }}</li>
-                }
-              </ul>
-            </article>
-          </div>
+                <article>
+                  <h4>Conflict winners</h4>
+                  <ul>
+                    @for (
+                      item of result.trace.conflicts;
+                      track item.leftLiteral + '|' + item.rightLiteral
+                    ) {
+                      <li>{{ item.winner }} — {{ item.winnerReason }}</li>
+                    }
+                  </ul>
+                </article>
+              </div>
+            }
+          } @else if (result.explainability.status === 'disabled') {
+            <p class="hint">
+              {{ result.explainability.message || 'Explainability was disabled.' }}
+            </p>
+          } @else {
+            <div class="error-box" role="alert" aria-atomic="true">
+              <p>Explainability error:</p>
+              <pre>{{
+                result.explainability.message ||
+                  'Narrative generation service is temporarily unavailable.'
+              }}</pre>
+            </div>
+          }
         </div>
       }
     }

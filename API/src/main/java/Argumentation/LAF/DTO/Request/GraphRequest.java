@@ -48,6 +48,18 @@ public class GraphRequest {
     @NotNull
     @Valid
     private OperationInputRequest operations;
+
+    /**
+     * Optional flag to control explainability generation.
+     *
+     * <p>
+     * When {@code true} (or absent), the backend attempts to build trace
+     * data and generate narrative text using the configured LLM service.
+     * When {@code false}, the graph is still generated but explainability
+     * generation is skipped.
+     * </p>
+     */
+    private Boolean explainabilityEnabled;
     
     /**
      * Returns the list of fact DTOs provided in the request.
@@ -90,6 +102,14 @@ public class GraphRequest {
     public OperationInputRequest getOperations() {
         return operations;
     }
+
+    public Boolean getExplainabilityEnabled() {
+        return explainabilityEnabled;
+    }
+
+    public boolean isExplainabilityEnabledOrDefault() {
+        return !Boolean.FALSE.equals(explainabilityEnabled);
+    }
     /**
      * Sets the algebraic operation definitions associated with labels.
      *
@@ -98,5 +118,10 @@ public class GraphRequest {
     @Deprecated
     public void setOperations(OperationInputRequest operations) {
         this.operations = operations;
+    }
+
+    @Deprecated
+    public void setExplainabilityEnabled(Boolean explainabilityEnabled) {
+        this.explainabilityEnabled = explainabilityEnabled;
     }
 }

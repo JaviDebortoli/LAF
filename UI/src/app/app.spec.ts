@@ -286,6 +286,61 @@ buy(X) :- goodArea(X). {0.85}`;
     expect(app.parseErrors()).toContain('Attribute 3: label name is required.');
   });
 
+  it('should keep explainability enabled by default and render toggle control', async () => {
+    const fixture = TestBed.createComponent(App);
+    const app = fixture.componentInstance;
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const explainabilityToggle = compiled.querySelector<HTMLInputElement>('input[type="checkbox"]');
+
+    expect(app.explainabilityEnabled).toBe(true);
+    expect(explainabilityToggle).not.toBeNull();
+    expect(explainabilityToggle).not.toBeNull();
+  });
+
+  it('should render explainability unavailable message without hiding the graph', () => {
+    const fixture = TestBed.createComponent(App);
+    const app = fixture.componentInstance;
+    fixture.detectChanges();
+
+    app.graphResponse.set({
+      nodes: [
+        createNode({
+          id: 'N1',
+          label: 'buy(houseA)',
+          type: 'FACT',
+          attributes: ['1'],
+          deltaAttributes: ['1'],
+        }),
+      ],
+      edges: [],
+    });
+
+    app.processNarrative.set({
+      graph: app.graphResponse()!,
+      narrative: null,
+      trace: null,
+      meta: null,
+      explainability: {
+        enabled: true,
+        status: 'unavailable',
+        message: 'Narrative generation service is temporarily unavailable.',
+      },
+    });
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const graphSummary = compiled.querySelector('.graph-summary');
+    const explainabilityError = compiled.querySelector('.narrative-output .error-box pre');
+
+    expect(graphSummary?.textContent).toContain('Nodes: 1');
+    expect(explainabilityError?.textContent).toContain(
+      'Narrative generation service is temporarily unavailable.',
+    );
+  });
+
   it('should reject comma-separated labels outside interval bounds', () => {
     const fixture = TestBed.createComponent(App);
     const app = fixture.componentInstance;

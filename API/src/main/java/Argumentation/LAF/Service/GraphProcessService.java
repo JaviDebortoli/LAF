@@ -1,6 +1,7 @@
 package Argumentation.LAF.Service;
 
 import Argumentation.LAF.DTO.Request.GraphRequest;
+import Argumentation.LAF.DTO.Response.ExplainabilityResponse;
 import Argumentation.LAF.DTO.Response.GraphProcessResponse;
 import Argumentation.LAF.DTO.Response.GraphResponse;
 import Argumentation.LAF.DTO.Response.NarrationMetaResponse;
@@ -13,6 +14,10 @@ import org.springframework.stereotype.Service;
 @Service
 public class GraphProcessService {
     private static final Logger LOGGER = LoggerFactory.getLogger(GraphProcessService.class);
+    private static final String EXPLAINABILITY_STATUS_OK = "ok";
+    private static final String EXPLAINABILITY_STATUS_DISABLED = "disabled";
+    private static final String EXPLAINABILITY_STATUS_UNAVAILABLE = "unavailable";
+    private static final String EXPLAINABILITY_DISABLED_MESSAGE = "Explainability is disabled for this run.";
 
     private final ProgramMapperService programMapperService;
     private final AlgebraMapperService algebraMapperService;
@@ -48,29 +53,61 @@ public class GraphProcessService {
 
         var argumentativeGraph = inferenceService.buildGraph(facts, rules, operations);
         GraphResponse graphResponse = graphBuilderService.toGraphResponse(argumentativeGraph);
-        NarrativeTraceResponse trace = narrativeTraceBuilderService.build(graphResponse);
-
-        LlmNarrativeService.GenerationResult generated = llmNarrativeService.generateNarrative(trace);
-        LOGGER.info(
-                "Narrative generated model={} promptVersion={}",
-                generated.model(),
-                generated.promptVersion());
-
-        NarrationMetaResponse meta = new NarrationMetaResponse();
-        meta.setModel(generated.model());
-        meta.setPromptVersion(generated.promptVersion());
-        meta.setGeneratedAt(Instant.now().toString());
 
         GraphProcessResponse response = new GraphProcessResponse();
         response.setGraph(graphResponse);
+
+        if (!request.isExplainabilityEnabledOrDefault()) {
+            response.setExplainability(buildExplainability(
+                    false,
+                    EXPLAINABILITY_STATUS_DISABLED,
+                    EXPLAINABILITY_DISABLED_MESSAGE));
+            LOGGER.info("Explainability skipped by request configuration");
+            LOGGER.info(
+                    "Finished graph process flow nodesCount={} edgesCount={}",
+                    graphResponse.getNodes().size(),
+                    graphResponse.getEdges().size());
+            return response;
+        }
+
+        NarrativeTraceResponse trace = narrativeTraceBuilderService.build(graphResponse);
         response.setTrace(trace);
-        response.setNarrative(generated.narrative());
-        response.setMeta(meta);
+
+        try {
+            LlmNarrativeService.GenerationResult generated = llmNarrativeService.generateNarrative(trace);
+            LOGGER.info(
+                    "Narrative generated model={} promptVersion={}",
+                    generated.model(),
+                    generated.promptVersion());
+
+            NarrationMetaResponse meta = new NarrationMetaResponse();
+            meta.setModel(generated.model());
+            meta.setPromptVersion(generated.promptVersion());
+            meta.setGeneratedAt(Instant.now().toString());
+
+            response.setNarrative(generated.narrative());
+            response.setMeta(meta);
+            response.setExplainability(buildExplainability(true, EXPLAINABILITY_STATUS_OK, null));
+        } catch (NarrativeServiceUnavailableException exception) {
+            LOGGER.warn("Explainability unavailable errorType={}", exception.getClass().getSimpleName());
+            response.setExplainability(buildExplainability(
+                    true,
+                    EXPLAINABILITY_STATUS_UNAVAILABLE,
+                    LlmNarrativeService.TEMPORARILY_UNAVAILABLE_MESSAGE));
+        }
 
         LOGGER.info(
                 "Finished graph process flow nodesCount={} edgesCount={}",
                 graphResponse.getNodes().size(),
                 graphResponse.getEdges().size());
         return response;
+    }
+
+    private ExplainabilityResponse buildExplainability(boolean enabled, String status, String message) {
+        ExplainabilityResponse explainability = new ExplainabilityResponse();
+        explainability.setEnabled(enabled);
+        explainability.setStatus(status);
+        explainability.setMessage(message);
+        return explainability;
     }
 }

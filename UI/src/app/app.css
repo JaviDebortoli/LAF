@@ -147,6 +147,86 @@
   gap: 8px;
 }
 
+.explainability-toggle-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  user-select: none;
+}
+
+.explainability-toggle-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #2b3f58;
+  white-space: nowrap;
+}
+
+.explainability-switch {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 28px;
+  flex: 0 0 auto;
+}
+
+.explainability-switch input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.explainability-switch-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  border: 1px solid #b8c5d8;
+  background: linear-gradient(180deg, #edf2f8 0%, #dfe7f2 100%);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.12);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.explainability-switch-track .thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ffffff 0%, #eef2f7 100%);
+  border: 1px solid #b8c5d8;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease;
+}
+
+.explainability-switch input:checked + .explainability-switch-track {
+  border-color: #4b9a74;
+  background: linear-gradient(180deg, #7fcba7 0%, #63b78f 100%);
+  box-shadow: inset 0 1px 2px rgba(10, 53, 34, 0.25);
+}
+
+.explainability-switch input:checked + .explainability-switch-track .thumb {
+  transform: translateX(24px);
+  border-color: #589a78;
+}
+
+.explainability-switch input:focus-visible + .explainability-switch-track {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+
 .hint {
   margin: 0;
   color: #506176;

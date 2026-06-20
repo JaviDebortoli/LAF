@@ -31,6 +31,7 @@ interface LabelOperationInput {
 interface GraphRequest {
   facts: FactInput[];
   rules: RuleInput[];
+  explainabilityEnabled: boolean;
   operations: {
     labels: LabelOperationInput[];
   };
@@ -140,9 +141,16 @@ interface ProcessMeta {
 
 interface GraphProcessResponse {
   graph: GraphResponse;
-  narrative: string;
-  trace: NarrativeTrace;
-  meta: ProcessMeta;
+  narrative: string | null;
+  trace: NarrativeTrace | null;
+  meta: ProcessMeta | null;
+  explainability: ExplainabilityState;
+}
+
+interface ExplainabilityState {
+  enabled: boolean;
+  status: 'ok' | 'disabled' | 'unavailable';
+  message: string | null;
 }
 
 interface FormalismTab {
@@ -175,6 +183,7 @@ export class App implements AfterViewInit, OnDestroy {
   @ViewChild('graphStage') graphStage?: ElementRef<HTMLDivElement>;
 
   readonly backendUrl = '/api/graph/process';
+  explainabilityEnabled = true;
 
   programText = EXAMPLE_PROGRAM;
   operationRows: OperationRow[] = [];
@@ -389,9 +398,9 @@ export class App implements AfterViewInit, OnDestroy {
 
     event.preventDefault();
     this.setActiveOperationTab(nextIndex);
-    const targetTab = document.getElementById(`operation-tab-${nextIndex}`) as
-      | HTMLButtonElement
-      | null;
+    const targetTab = document.getElementById(
+      `operation-tab-${nextIndex}`,
+    ) as HTMLButtonElement | null;
     targetTab?.focus();
   }
 
@@ -550,6 +559,7 @@ export class App implements AfterViewInit, OnDestroy {
     const requestPayload: GraphRequest = {
       facts: parsedWithSelections.facts,
       rules: parsedWithSelections.rules,
+      explainabilityEnabled: this.explainabilityEnabled,
       operations: {
         labels: this.operationRows.map((row) => ({
           labelName: row.labelName.trim(),
@@ -572,7 +582,9 @@ export class App implements AfterViewInit, OnDestroy {
             !response.graph ||
             !Array.isArray(response.graph.nodes) ||
             !Array.isArray(response.graph.edges) ||
-            typeof response.narrative !== 'string'
+            !response.explainability ||
+            typeof response.explainability.enabled !== 'boolean' ||
+            !['ok', 'disabled', 'unavailable'].includes(response.explainability.status)
           ) {
             this.graphResponse.set(null);
             this.processNarrative.set(null);

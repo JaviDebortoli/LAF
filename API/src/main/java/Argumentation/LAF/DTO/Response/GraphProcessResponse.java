@@ -5,6 +5,7 @@ public class GraphProcessResponse {
     private String narrative;
     private NarrativeTraceResponse trace;
     private NarrationMetaResponse meta;
+    private ExplainabilityResponse explainability;
 
     public GraphResponse getGraph() {
         return graph;
@@ -22,6 +23,10 @@ public class GraphProcessResponse {
         return meta;
     }
 
+    public ExplainabilityResponse getExplainability() {
+        return explainability;
+    }
+
     public void setGraph(GraphResponse graph) {
         this.graph = graph;
     }
@@ -36,5 +41,9 @@ public class GraphProcessResponse {
 
     public void setMeta(NarrationMetaResponse meta) {
         this.meta = meta;
+    }
+
+    public void setExplainability(ExplainabilityResponse explainability) {
+        this.explainability = explainability;
     }
 }
