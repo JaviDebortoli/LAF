@@ -112,7 +112,7 @@
             <input
               [(ngModel)]="activeRow.supportFunction"
               type="text"
-              placeholder="X * Y or Union"
+              placeholder="X * Y or Union/Intersection/Difference"
               [name]="'support-' + activeOperationTabIndex"
             />
           </label>
@@ -122,7 +122,7 @@
             <input
               [(ngModel)]="activeRow.aggregationFunction"
               type="text"
-              placeholder="max(X,Y) or Union"
+              placeholder="max(X,Y) or Union/Intersection/Difference"
               [name]="'aggregation-' + activeOperationTabIndex"
             />
           </label>
@@ -132,7 +132,7 @@
             <input
               [(ngModel)]="activeRow.conflictFunction"
               type="text"
-              placeholder="max(X-Y,0) or Intersection"
+              placeholder="max(X-Y,0) or Union/Intersection/Difference"
               [name]="'conflict-' + activeOperationTabIndex"
             />
           </label>

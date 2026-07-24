@@ -32,11 +32,10 @@ La coma se reserva para extremos de intervalos numericos dentro de corchetes.
 
 ### 3.2 Cualitativos
 
-- Se interpretan como conjuntos de simbolos.
-- En la implementacion actual del backend:
-  - soporte -> `Union`
-  - agregacion -> `Union`
-  - conflicto -> `Intersection`
+- Se interpretan como conjuntos de simbolos (tokens separados por espacios).
+- Operadores disponibles: `Union`, `Intersection` y `Difference`.
+- Los tres operadores pueden usarse en cualquiera de las tres operaciones (soporte, agregacion, conflicto); no hay restriccion de cual keyword va en cual campo.
+- `Difference` es asimetrico (`X \ Y`): en soporte y agregacion, `X` es el acumulador y `Y` el siguiente valor incorporado; en conflicto, `X` es el hecho atacado y `Y` el hecho atacante.
 
 ## 4) Intervalos en labels numericos
 

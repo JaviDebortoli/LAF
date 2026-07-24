@@ -4,12 +4,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import net.objecthunter.exp4j.Expression;
 import net.objecthunter.exp4j.ExpressionBuilder;
+import net.objecthunter.exp4j.function.Function;
 
 /**
  * Executes the inferential process over a knowledge program composed of
@@ -35,8 +37,9 @@ import net.objecthunter.exp4j.ExpressionBuilder;
  * <h3>Label Interpretation</h3>
  * <ul>
  *   <li>If attributes parse as doubles -> numeric algebra via exp4j</li>
- *   <li>If not -> interpreted as sets of strings (support = Union,
- *       aggregation = Union, conflict = Intersection)</li>
+ *   <li>If not -> interpreted as sets of strings, combined with a symbolic
+ *       operator ({@code Union}, {@code Intersection} or {@code Difference}).
+ *       Any of the three is valid for support, aggregation and conflict.</li>
  * </ul>
  *
  * <h3>Returned Structure</h3>
@@ -61,7 +64,30 @@ public class InferenceEngine {
     private final List<KnowledgePiece> removableEdges;
     /** Pairs of contradictory facts detected during the conflict phase. */
     private final List<PairInConflict> conflictiveNodes;
-    
+
+    /** Custom exp4j function exposing Math.min(X, Y) as min(X,Y) in user expressions. */
+    private static final Function MIN_FUNCTION = new Function("min", 2) {
+        @Override
+        public double apply(double... args) {
+            return Math.min(args[0], args[1]);
+        }
+    };
+
+    /** Custom exp4j function exposing Math.max(X, Y) as max(X,Y) in user expressions. */
+    private static final Function MAX_FUNCTION = new Function("max", 2) {
+        @Override
+        public double apply(double... args) {
+            return Math.max(args[0], args[1]);
+        }
+    };
+
+    /** Symbolic operator keyword: set union, usable in support, aggregation and conflict. */
+    private static final String SYMBOLIC_UNION = "Union";
+    /** Symbolic operator keyword: set intersection, usable in support, aggregation and conflict. */
+    private static final String SYMBOLIC_INTERSECTION = "Intersection";
+    /** Symbolic operator keyword: set difference (X \ Y), usable in support, aggregation and conflict. */
+    private static final String SYMBOLIC_DIFFERENCE = "Difference";
+
     /**
      * Creates a new inference engine from lists of facts, rules,
      * and the label algebra function table.
@@ -77,10 +103,47 @@ public class InferenceEngine {
         this.facts = facts;                         
         this.rules = rules;                         
         this.functions = functions;                 
-        this.removableEdges = new ArrayList<>();    
+        this.removableEdges = new ArrayList<>();
         this.conflictiveNodes = new ArrayList<>();
     }
-    
+
+    /**
+     * Applies a symbolic (set-based) label operator between two qualitative label
+     * values, used as the fallback whenever numeric evaluation of an expression
+     * fails because the attributes are sets of strings rather than doubles.
+     * <p>
+     * Both operands are tokenized by splitting on whitespace before the operator
+     * is applied, so that multi-word values (e.g. the result of a previous
+     * {@code Union}) are treated as proper sets rather than single opaque tokens.
+     * This same helper backs support, aggregation and conflict, so any of
+     * {@code Union}, {@code Intersection} or {@code Difference} can be used in
+     * any of the three operations.
+     * </p>
+     *
+     * @param operatorName  the symbolic keyword configured for this label
+     *                      ({@link #SYMBOLIC_UNION}, {@link #SYMBOLIC_INTERSECTION}
+     *                      or {@link #SYMBOLIC_DIFFERENCE})
+     * @param leftValue     the left-hand operand (plays the role of {@code X})
+     * @param rightValue    the right-hand operand (plays the role of {@code Y})
+     * @return              the resulting set, rendered back as a space-joined string
+     * @throws IllegalArgumentException if {@code operatorName} is not a recognized
+     *                      symbolic operator
+     */
+    private String applySymbolicOperator(String operatorName, String leftValue, String rightValue) {
+        LinkedHashSet<String> left = new LinkedHashSet<>(Arrays.asList(leftValue.split(" ")));
+        Set<String> right = new LinkedHashSet<>(Arrays.asList(rightValue.split(" ")));
+
+        switch (operatorName) {
+            case SYMBOLIC_UNION -> left.addAll(right);
+            case SYMBOLIC_INTERSECTION -> left.retainAll(right);
+            case SYMBOLIC_DIFFERENCE -> left.removeAll(right);
+            default -> throw new IllegalArgumentException(
+                    "Unsupported label operator for qualitative attributes: '" + operatorName + "'");
+        }
+
+        return String.join(" ", left);
+    }
+
     /**
      * Executes the complete inference cycle and constructs the argumentative structure.
      * <p>
@@ -216,11 +279,10 @@ public class InferenceEngine {
      * </ul>
      *
      * <h3>Symbolic / Set-based fallback</h3>
-     * If numeric evaluation fails (IllegalArgumentException), the method performs
-     * a symbolic operation. Currently:
-     * <ul>
-     *   <li>{@code "Union"} → merges all textual labels without repetition</li>
-     * </ul>
+     * If numeric evaluation fails (NumberFormatException), the method performs
+     * a symbolic operation via {@link #applySymbolicOperator(String, String, String)},
+     * folding premises then the rule's own value in order. Any of {@code Union},
+     * {@code Intersection} or {@code Difference} may be configured.
      *
      * @param potentialFacts    The list of facts that satisfied the body of the rule
      *                          and enable the derivation of a new fact.
@@ -233,27 +295,40 @@ public class InferenceEngine {
     private String[] calculateSupport (List<Fact> potentialFacts, Rule rule) {
         String[] atributtes = new String[ potentialFacts.getFirst().getAttributes().length ];
         Expression expression;
-        LinkedHashSet<String> union = new LinkedHashSet<>();
-        
+
         for (int i = 0; i < atributtes.length ; i++) {
-            atributtes[i] = "0.0";
             // Reemplazar los valores de X y Y, y evaluar la funcion para cada uno de los antecedentes
             try {
-                for (Fact fact : potentialFacts) {
+                // El fold arranca en el valor real de la primera premisa (no en "0.0" artificial),
+                // para no imponer un elemento neutro incorrecto a operadores como min(X,Y).
+                Iterator<Fact> premises = potentialFacts.iterator();
+                atributtes[i] = premises.next().getAttributes()[i];
+
+                while (premises.hasNext()) {
+                    Fact fact = premises.next();
+                    // Parsear X e Y ANTES de construir la expresion: si los atributos son
+                    // cualitativos (ej. "red"), esto debe fallar aca con NumberFormatException,
+                    // sin intentar compilar el operador simbolico (ej. "Union") como expresion numerica.
+                    double xValue = Double.parseDouble(atributtes[i]);
+                    double yValue = Double.parseDouble(fact.getAttributes()[i]);
                     expression = new ExpressionBuilder( functions[i][0] )
                         .variables("X", "Y")
+                        .functions(MIN_FUNCTION, MAX_FUNCTION)
                         .build()
-                        .setVariable("X", Double.parseDouble(atributtes[i]))
-                        .setVariable("Y", Double.parseDouble(fact.getAttributes()[i]));
+                        .setVariable("X", xValue)
+                        .setVariable("Y", yValue);
 
                     atributtes[i] = String.valueOf(expression.evaluate());
                 }
                 // Reemplazar los valores de X y Y, y evaluar la funcion para la regla
+                double xValue = Double.parseDouble(atributtes[i]);
+                double yValue = Double.parseDouble(rule.getAttributes()[i]);
                 expression = new ExpressionBuilder( functions[i][0] )
                         .variables("X", "Y")
+                        .functions(MIN_FUNCTION, MAX_FUNCTION)
                         .build()
-                        .setVariable("X", Double.parseDouble(atributtes[i]))
-                        .setVariable("Y", Double.parseDouble(rule.getAttributes()[i]));
+                        .setVariable("X", xValue)
+                        .setVariable("Y", yValue);
 
                 atributtes[i] = String.valueOf(expression.evaluate());
                 // Ubicar los valores en el intervalo [0, 1]
@@ -262,40 +337,21 @@ public class InferenceEngine {
                 } else if (Double.parseDouble(atributtes[i])<0) {
                     atributtes[i] = "0.0";
                 }
-            } catch (IllegalArgumentException exception1) {
-                
-                /*
-                *
-                * ONLY UNION SUPPORTED!!!!!!!!!!
-                *
-                */
-                
-                try {
-                    union.clear();
-                    
-                    switch (functions[i][0]) {
-                        case "Union" -> {
-                            for (Fact fact : potentialFacts) {
-                                union.add(fact.getAttributes()[i]);
-                            }
-                            union.add(rule.getAttributes()[i]);
-                            atributtes[i] = String.join(" ", union);
-                            break;
-                        }
-                        
-                        /*
-                        *
-                        * TO DO: OTHER OPERATORS
-                        *
-                        */
-                    
-                    }
-                } catch (Exception exception2) {
-                    throw exception2;
+            } catch (NumberFormatException exception1) {
+                // Atributos cualitativos: se rearma el fold usando el operador simbolico
+                // configurado (Union, Intersection o Difference), en el mismo orden que
+                // el fold numerico (premisas en orden, luego el atributo de la regla).
+                Iterator<Fact> premises = potentialFacts.iterator();
+                String accumulated = premises.next().getAttributes()[i];
+
+                while (premises.hasNext()) {
+                    accumulated = applySymbolicOperator(functions[i][0], accumulated, premises.next().getAttributes()[i]);
                 }
+
+                atributtes[i] = applySymbolicOperator(functions[i][0], accumulated, rule.getAttributes()[i]);
             }
         }
-        
+
         return atributtes;
     }
     
@@ -443,7 +499,7 @@ public class InferenceEngine {
      * <h3>Label algebra behavior</h3>
      * <ul>
      *   <li>Numeric: applies the operator defined in {@code functions[i][1]}</li>
-     *   <li>Symbolic: falls back to set union (no duplicates)</li>
+     *   <li>Symbolic: falls back to the configured set operator (Union, Intersection or Difference)</li>
      * </ul>
      *
      * <h3>Graph effects</h3>
@@ -519,8 +575,8 @@ public class InferenceEngine {
      * 
      * <h3>Label semantics</h3>
      * Numeric labels -> aggregated numerically according to {@code functions[i][1]}
-     * Text labels -> merged as a set (union, no duplicates)
-     * 
+     * Text labels -> combined via the configured set operator (Union, Intersection or Difference)
+     *
      * @param newFact   The fact that triggered the aggregation process; its predicate
      *                  and argument determine the search target for combination.
      * @return          A new {@link Fact} instance with merged labels representing the
@@ -680,38 +736,39 @@ public class InferenceEngine {
      * </ul>
      * 
      * <h3>Symbolic mode (fallback)</h3>
-     * If numeric parsing fails at any index:
-     * <ul>
-     *   <li>The method performs a set-based merge of symbolic labels</li>
-     *   <li>Only the {@code "Union"} operator is currently supported</li>
-     * </ul>
-     * 
+     * If numeric parsing fails at any index, the method delegates to
+     * {@link #applySymbolicOperator(String, String, String)}. Any of
+     * {@code Union}, {@code Intersection} or {@code Difference} may be configured.
+     *
      * <h3>Operator reference</h3>
      * The algebra index for aggregation is:
      * <pre>
      * functions[i][1]
      * </pre>
      * where {@code i} matches the label dimension.
-     * 
+     *
      * @param newFact       The newly inferred fact whose labels need to be merged.
      * @param removableFact The pre-existing fact with equivalent predicate and argument.
      * @return              A {@code String[]} representing the aggregated label vector, combining
-     *                      both numeric values (clamped to [0,1]) or symbolic sets (Union).
+     *                      both numeric values (clamped to [0,1]) or symbolic sets.
      */
     private String[] calculateAggregation(Fact newFact, Fact removableFact) {
         String[] atributtes = new String[ newFact.getAttributes().length ];
         Expression expression;
-        LinkedHashSet<String> union = new LinkedHashSet<>();
-        
+
         for (int i = 0; i < atributtes.length ; i++) {
             try {
                 atributtes[i] = "0.0";
+                // Parsear X e Y ANTES de construir la expresion (ver nota en calculateSupport).
+                double xValue = Double.parseDouble(newFact.getAttributes()[i]);
+                double yValue = Double.parseDouble(removableFact.getAttributes()[i]);
                 // Replace X and Y in the expresion
                 expression = new ExpressionBuilder( functions[i][1] )
                         .variables("X", "Y")
+                        .functions(MIN_FUNCTION, MAX_FUNCTION)
                         .build()
-                        .setVariable("X", Double.parseDouble(newFact.getAttributes()[i]))
-                        .setVariable("Y", Double.parseDouble(removableFact.getAttributes()[i]));
+                        .setVariable("X", xValue)
+                        .setVariable("Y", yValue);
                 // Evaluate the expression with the current parameters
                 atributtes[i] = String.valueOf(expression.evaluate());
                 // Normalize values
@@ -720,34 +777,11 @@ public class InferenceEngine {
                 } else if (Double.parseDouble(atributtes[i])<0) {
                     atributtes[i] = "0.0";
                 }
-            } catch (IllegalArgumentException exception1) {
-                /*
-                *
-                * ONLY UNION SUPPORTED!!!!!!!!!!
-                *
-                */
-                try {
-                    union.clear();
-                    
-                    switch (functions[i][1]) {
-                        case "Union" -> {
-                            union.addAll(Arrays.asList(newFact.getAttributes()[i].split(" ")));
-                            union.addAll(Arrays.asList(removableFact.getAttributes()[i].split(" ")));
-                            
-                            atributtes[i] = String.join(" ", union);
-                        }
-                        /*
-                        *
-                        * TO DO: OTHER OPERATORS
-                        *
-                        */
-                    }
-                } catch (Exception exception2) {
-                    throw exception2;
-                }
+            } catch (NumberFormatException exception1) {
+                atributtes[i] = applySymbolicOperator(functions[i][1], newFact.getAttributes()[i], removableFact.getAttributes()[i]);
             }
         }
-        
+
         return atributtes;
     }
 
@@ -772,13 +806,11 @@ public class InferenceEngine {
      * </ul>
      * 
      * <h3>Symbolic / Set-based fallback</h3>
-     * If numeric parsing fails for a dimension:
-     * <ul>
-     *   <li>The dimension falls back to symbolic aggregation</li>
-     *   <li>Currently only the {@code "Union"} operator is supported</li>
-     *   <li>Duplicates are removed via {@link LinkedHashSet}</li>
-     * </ul>
-     * 
+     * If numeric parsing fails for a dimension, the dimension falls back to
+     * {@link #applySymbolicOperator(String, String, String)}, folding all facts
+     * in order. Any of {@code Union}, {@code Intersection} or {@code Difference}
+     * may be configured; duplicates are removed via {@link LinkedHashSet}.
+     *
      * <h3>Algebra reference</h3>
      * Aggregation operator for label index {@code i}:
      * <pre>
@@ -793,8 +825,7 @@ public class InferenceEngine {
     private String[] calculateAggregation(List<Fact> aggregatedFacts) {
         String[] atributtes = new String[ aggregatedFacts.getFirst().getAttributes().length ];
         Expression expression;
-        LinkedHashSet<String> union = new LinkedHashSet<>();
-        
+
         for (int i = 0; i < atributtes.length ; i++) {
             try {
                 atributtes[i] = null;
@@ -803,12 +834,16 @@ public class InferenceEngine {
                     if(atributtes[i] == null){
                         atributtes[i] = fact.getAttributes()[i];
                     } else {
+                        // Parsear X e Y ANTES de construir la expresion (ver nota en calculateSupport).
+                        double xValue = Double.parseDouble(atributtes[i]);
+                        double yValue = Double.parseDouble(fact.getAttributes()[i]);
                         // Replace X and Y in the expresion
                         expression = new ExpressionBuilder(functions[i][1])
                                 .variables("X", "Y")
+                                .functions(MIN_FUNCTION, MAX_FUNCTION)
                                 .build()
-                                .setVariable("X", Double.parseDouble(atributtes[i]))
-                                .setVariable("Y", Double.parseDouble(fact.getAttributes()[i]));
+                                .setVariable("X", xValue)
+                                .setVariable("Y", yValue);
                         // Evaluate the expression with the current parameters
                         atributtes[i] = String.valueOf(expression.evaluate());
                     }
@@ -819,35 +854,18 @@ public class InferenceEngine {
                 } else if (Double.parseDouble(atributtes[i])<0) {
                     atributtes[i] = "0.0";
                 }
-            } catch (IllegalArgumentException exception1) {
-                /*
-                *
-                * ONLY UNION SUPPORTED!!!!!!!!!!
-                *
-                */
-                try {
-                    union.clear();
-                    
-                    switch (functions[i][1]) {
-                        case "Union" -> {
-                            for (Fact fact : aggregatedFacts) {
-                                union.addAll(Arrays.asList(fact.getAttributes()[i].split(" ")));
-                            }
-                            
-                            atributtes[i] = String.join(" ", union);
-                        }
-                        /*
-                        *
-                        * TO DO: OTHER OPERATORS
-                        *
-                        */
-                    }
-                } catch (Exception exception2) {
-                    throw exception2;
+            } catch (NumberFormatException exception1) {
+                Iterator<Fact> remainingFacts = aggregatedFacts.iterator();
+                String accumulated = remainingFacts.next().getAttributes()[i];
+
+                while (remainingFacts.hasNext()) {
+                    accumulated = applySymbolicOperator(functions[i][1], accumulated, remainingFacts.next().getAttributes()[i]);
                 }
+
+                atributtes[i] = accumulated;
             }
         }
-        
+
         return atributtes;
     }
     
@@ -888,7 +906,7 @@ public class InferenceEngine {
      * Two evaluation modes exist:
      * <ul>
      *   <li><b>Numeric:</b> evaluate algebra via exp4j</li>
-     *   <li><b>Symbolic:</b> fallback to set intersection</li>
+     *   <li><b>Symbolic:</b> fallback to the configured set operator (Union, Intersection or Difference)</li>
      * </ul>
      * 
      * @implNote
@@ -946,13 +964,12 @@ public class InferenceEngine {
      * </ul>
      * 
      * <h3>Symbolic attack (fallback)</h3>
-     * If numeric parsing fails:
-     * <ul>
-     *   <li>Only {@code "Intersection"} is currently supported</li>
-     *   <li>Each dimension is processed by set intersection</li>
-     *   <li>Duplicates are removed and order is preserved</li>
-     * </ul>
-     * 
+     * If numeric parsing fails, the dimension is processed by
+     * {@link #applySymbolicOperator(String, String, String)} with {@code f1} as
+     * {@code X} and {@code f2} as {@code Y}. Any of {@code Union},
+     * {@code Intersection} or {@code Difference} may be configured; duplicates
+     * are removed and insertion order is preserved.
+     *
      * <h3>Algebra index reference</h3>
      * The conflict operator is selected via:
      * <pre>
@@ -967,17 +984,19 @@ public class InferenceEngine {
     private String[] calculateAttack (Fact f1, Fact f2) {
         String[] attributtes = new String[f1.getAttributes().length];
         Expression expression;
-        LinkedHashSet<String> intersection1 = new LinkedHashSet<>();
-        LinkedHashSet<String> intersection2 = new LinkedHashSet<>();
-        
-        for (int i = 0; i < attributtes.length; i++) { 
+
+        for (int i = 0; i < attributtes.length; i++) {
             try {
+                // Parsear X e Y ANTES de construir la expresion (ver nota en calculateSupport).
+                double xValue = Double.parseDouble(f1.getAttributes()[i]);
+                double yValue = Double.parseDouble(f2.getAttributes()[i]);
                 // Replace X and Y in the expresion
                 expression = new ExpressionBuilder( functions[i][2] )
                         .variables("X", "Y")
+                        .functions(MIN_FUNCTION, MAX_FUNCTION)
                         .build()
-                        .setVariable("X", Double.parseDouble(f1.getAttributes()[i]))
-                        .setVariable("Y", Double.parseDouble(f2.getAttributes()[i]));
+                        .setVariable("X", xValue)
+                        .setVariable("Y", yValue);
 
                 // Evaluate the expression with the current parameters
                 attributtes[i] = String.valueOf(expression.evaluate());
@@ -987,37 +1006,11 @@ public class InferenceEngine {
                 } else if (Double.parseDouble(attributtes[i])<0) {
                     attributtes[i] = "0.0";
                 }
-            } catch (IllegalArgumentException exception1) {
-                /*
-                *
-                * ONLY INTERSECTION SUPPORTED!!!!!!!!!!
-                *
-                */
-                try {
-                    intersection1.clear();
-                    intersection2.clear();
-                    
-                    switch (functions[i][2]) {
-                        case "Intersection" -> {
-                            intersection1.addAll(Arrays.asList(f1.getAttributes()[i].split(" ")));
-                            intersection2.addAll(Arrays.asList(f2.getAttributes()[i].split(" ")));
-                            
-                            intersection1.retainAll(intersection2);
-                            
-                            attributtes[i] = String.join(" ", intersection1);
-                        }
-                        /*
-                        *
-                        * TO DO: OTHER OPERATORS
-                        *
-                        */
-                    }
-                } catch (Exception exception2) {
-                    throw exception2;
-                }
+            } catch (NumberFormatException exception1) {
+                attributtes[i] = applySymbolicOperator(functions[i][2], f1.getAttributes()[i], f2.getAttributes()[i]);
             }
         }
-        
+
         return attributtes;
     }
 }

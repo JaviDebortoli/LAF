@@ -1,7 +1,11 @@
 # AI agent artifacts
 .agents/
 AGENTS.md
+CLAUDE.md
 skills-lock.json
+.atl/
+.claude/settings.local.json
+.codegraph/
 
 # Documentation
 docs/
